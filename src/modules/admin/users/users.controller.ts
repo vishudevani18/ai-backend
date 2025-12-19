@@ -1,0 +1,80 @@
+import { ROUTES } from '../../../common/constants';
+import {
+  Controller,
+  Get,
+  Patch,
+  Delete,
+  Param,
+  Query,
+  ParseIntPipe,
+  DefaultValuePipe,
+  UseGuards,
+} from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiQuery,
+  ApiParam,
+} from '@nestjs/swagger';
+import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../../../common/guards/roles.guard';
+import { Roles } from '../../../common/decorators/roles.decorator';
+import { UserRole } from '../../../database/entities/user.entity';
+import { CurrentUser } from '../../../common/decorators/current-user.decorator';
+import { User } from '../../../database/entities/user.entity';
+import { AdminUsersService } from './users.service';
+import { ResponseUtil } from '../../../common/utils/response.util';
+
+@ApiTags('Admin - User Management')
+@Controller(ROUTES.ADMIN.USERS)
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+@ApiBearerAuth()
+export class AdminUsersController {
+  constructor(private readonly adminUsersService: AdminUsersService) {}
+
+  @Get()
+  @ApiOperation({ summary: 'Get all regular users (Admin/Super Admin only)' })
+  @ApiQuery({ name: 'page', required: false, type: Number, description: 'Page number' })
+  @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Items per page' })
+  @ApiResponse({ status: 200, description: 'Users retrieved successfully' })
+  async findAll(
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
+  ) {
+    const { users, total } = await this.adminUsersService.findAll(page, limit);
+    return ResponseUtil.paginated(users, page, limit, total, 'Users retrieved successfully');
+  }
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Get user by ID (Admin/Super Admin only)' })
+  @ApiParam({ name: 'id', description: 'User ID' })
+  @ApiResponse({ status: 200, description: 'User retrieved successfully' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  async findOne(@Param('id') id: string) {
+    const user = await this.adminUsersService.findOne(id);
+    return ResponseUtil.success(user, 'User retrieved successfully');
+  }
+
+  @Patch(':id/toggle-active')
+  @ApiOperation({ summary: 'Toggle user active status (Admin/Super Admin only)' })
+  @ApiParam({ name: 'id', description: 'User ID' })
+  @ApiResponse({ status: 200, description: 'User status toggled successfully' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  async toggleActive(@Param('id') id: string, @CurrentUser() currentUser: User) {
+    const user = await this.adminUsersService.toggleActive(id, currentUser.id);
+    return ResponseUtil.success(user, 'User status toggled successfully');
+  }
+
+  @Delete(':id')
+  @ApiOperation({ summary: 'Delete user (Admin/Super Admin only)' })
+  @ApiParam({ name: 'id', description: 'User ID' })
+  @ApiResponse({ status: 200, description: 'User deleted successfully' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  async remove(@Param('id') id: string, @CurrentUser() currentUser: User) {
+    await this.adminUsersService.remove(id, currentUser.id);
+    return ResponseUtil.success(null, 'User deleted successfully');
+  }
+}
