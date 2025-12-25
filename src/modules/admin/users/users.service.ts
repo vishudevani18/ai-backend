@@ -10,25 +10,63 @@ export class AdminUsersService {
     private userRepository: Repository<User>,
   ) {}
 
-  async findAll(page: number = 1, limit: number = 10): Promise<{ users: User[]; total: number }> {
-    // Only return regular users (not admins or super admins)
-    const [users, total] = await this.userRepository.findAndCount({
-      where: { role: UserRole.USER },
-      skip: (page - 1) * limit,
-      take: limit,
-      select: [
-        'id',
-        'email',
-        'firstName',
-        'lastName',
-        'phone',
-        'role',
-        'status',
-        'createdAt',
-        'updatedAt',
-      ],
-      order: { createdAt: 'DESC' },
-    });
+  async findAll(filters: {
+    page?: number;
+    limit?: number;
+    email?: string;
+    phone?: string;
+    status?: UserStatus;
+    sortBy?: string;
+    sortOrder?: 'ASC' | 'DESC';
+  }): Promise<{ users: User[]; total: number }> {
+    const {
+      page = 1,
+      limit = 20,
+      email,
+      phone,
+      status,
+      sortBy = 'createdAt',
+      sortOrder = 'DESC',
+    } = filters;
+
+    // Build query with TypeORM
+    const queryBuilder = this.userRepository
+      .createQueryBuilder('user')
+      .where('user.role = :role', { role: UserRole.USER })
+      .select([
+        'user.id',
+        'user.email',
+        'user.firstName',
+        'user.lastName',
+        'user.phone',
+        'user.role',
+        'user.status',
+        'user.createdAt',
+        'user.updatedAt',
+      ]);
+
+    // Apply filters
+    if (email) {
+      queryBuilder.andWhere('user.email ILIKE :email', { email: `%${email}%` });
+    }
+
+    if (phone) {
+      queryBuilder.andWhere('user.phone ILIKE :phone', { phone: `%${phone}%` });
+    }
+
+    if (status) {
+      queryBuilder.andWhere('user.status = :status', { status });
+    }
+
+    // Apply sorting
+    const validSortFields = ['createdAt', 'updatedAt', 'email', 'firstName', 'lastName'];
+    const sortField = validSortFields.includes(sortBy) ? sortBy : 'createdAt';
+    queryBuilder.orderBy(`user.${sortField}`, sortOrder);
+
+    // Apply pagination
+    queryBuilder.skip((page - 1) * limit).take(limit);
+
+    const [users, total] = await queryBuilder.getManyAndCount();
 
     return { users, total };
   }

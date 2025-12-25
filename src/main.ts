@@ -6,12 +6,30 @@ import { DataSource } from 'typeorm';
 import helmet from 'helmet';
 import * as compression from 'compression';
 import * as bodyParser from 'body-parser';
-import { AppModule } from './app.module';
+// AppModule is dynamically imported after secrets are loaded to ensure ConfigModule validation happens after env vars are set
 import { ValidationErrorUtil } from './common/utils/validation-error.util';
 import { API_PREFIX, API_VERSION, ROUTES } from './common/constants';
 import { createSuperAdmin } from './database/seeds/create-super-admin.seed';
+import { loadEnvFromSecretManager } from './config/secret-loader';
 
 async function bootstrap() {
+  // Load environment variables from GCP Secret Manager in production
+  // This MUST happen BEFORE NestFactory.create() because ConfigModule runs during AppModule initialization
+  if (process.env.NODE_ENV === 'production') {
+    try {
+      await loadEnvFromSecretManager();
+    } catch (error) {
+      console.error('Failed to load environment variables from Secret Manager:', error.message);
+      console.error('Application cannot start without the "env" secret in production');
+      process.exit(1);
+    }
+  }
+
+  // Dynamically import AppModule after secrets are loaded
+  // This ensures ConfigModule.forRoot() runs AFTER secrets are loaded
+  const { AppModule } = await import('./app.module');
+
+  // Create the NestJS application
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
 
@@ -20,7 +38,7 @@ async function bootstrap() {
     const dataSource = app.get(DataSource);
     await createSuperAdmin(dataSource);
   } catch (error) {
-    console.error('⚠️  Failed to create super admin:', error.message);
+    console.error('Failed to create super admin:', error.message);
   }
 
   // Increase body limit for Base64 images
@@ -113,9 +131,11 @@ async function bootstrap() {
   const port = configService.get('app.port') || 8080;
   await app.listen(port);
 
-  console.log(`🚀 Application is running on: http://localhost:${port}`);
-  console.log(`📚 Swagger documentation: http://localhost:${port}/${API_PREFIX}/docs`);
-  console.log(`🏥 Health check: http://localhost:${port}/${API_PREFIX}/${ROUTES.HEALTH.BASE}`);
+  const baseUrl = process.env.BASE_URL || `http://localhost:${port}`;
+
+  console.log(`🚀 Application is running on: ${baseUrl}`);
+  console.log(`📚 Swagger documentation: ${baseUrl}/${API_PREFIX}/docs`);
+  console.log(`🏥 Health check: ${baseUrl}/${API_PREFIX}/${ROUTES.HEALTH.BASE}`);
 }
 
 bootstrap();

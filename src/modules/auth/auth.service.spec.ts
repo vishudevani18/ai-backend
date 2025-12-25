@@ -119,7 +119,7 @@ describe('AuthService', () => {
       mockJwtService.signAsync.mockResolvedValue('mock-token');
 
       // Mock bcrypt.compare
-      const bcrypt = require('bcrypt');
+      const bcrypt = require('bcryptjs');
       jest.spyOn(bcrypt, 'compare').mockResolvedValue(true);
 
       const result = await service.login(loginDto);

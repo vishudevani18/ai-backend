@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, ILike } from 'typeorm';
+import { Repository, ILike, In } from 'typeorm';
 import { ProductBackground } from '../../../database/entities/product-background.entity';
 import { CreateProductBackgroundDto } from './dto/create-product-background.dto';
 import { UpdateProductBackgroundDto } from './dto/update-product-background.dto';
@@ -27,16 +27,18 @@ export class ProductBackgroundsService {
     if (exists) throw new BadRequestException('Product background with this name already exists');
 
     const productThemes = dto.productThemeIds
-      ? await this.productThemeRepo.findByIds(dto.productThemeIds)
+      ? await this.productThemeRepo.find({
+          where: { id: In(dto.productThemeIds) },
+        })
       : [];
 
-    // Generate unique ID for the entity (will be created on save)
+    // Generate temporary ID for path, will update after save
     const tempId = uuidv4();
     const fileExtension = file.originalname.split('.').pop() || 'jpg';
-    const gcsPath = `product-backgrounds/${tempId}/${uuidv4()}.${fileExtension}`;
+    const gcsPath = `product-backgrounds/${tempId}/image.${fileExtension}`;
 
-    // Upload to GCS
-    const imageUrl = await this.gcsStorageService.uploadFile(
+    // Upload as public file
+    const imageUrl = await this.gcsStorageService.uploadPublicFile(
       file.buffer,
       gcsPath,
       file.mimetype,
@@ -46,43 +48,81 @@ export class ProductBackgroundsService {
       name: dto.name,
       description: dto.description,
       imageUrl,
+      imagePath: gcsPath,
       productThemes,
     });
 
     const saved = await this.repo.save(entity);
 
-    // Update GCS path with actual ID
+    // Update GCS path with actual ID if different (overwrite with correct path)
     if (saved.id !== tempId) {
-      const newPath = `product-backgrounds/${saved.id}/${uuidv4()}.${fileExtension}`;
-      const newUrl = await this.gcsStorageService.uploadFile(file.buffer, newPath, file.mimetype);
-      await this.gcsStorageService.deleteFile(gcsPath);
+      const newPath = `product-backgrounds/${saved.id}/image.${fileExtension}`;
+      const newUrl = await this.gcsStorageService.uploadPublicFile(file.buffer, newPath, file.mimetype);
+      
+      // Delete old file if path changed
+      if (gcsPath !== newPath) {
+        try {
+          await this.gcsStorageService.deleteFile(gcsPath);
+        } catch (error) {
+          console.error('Failed to delete old image:', error);
+        }
+      }
+      
       saved.imageUrl = newUrl;
+      saved.imagePath = newPath;
       return this.repo.save(saved);
     }
 
     return saved;
   }
 
-  async findAll(search?: string, productThemeId?: string) {
-    const where: any = {};
-    if (search) where.name = ILike(`%${search}%`);
+  async findAll(filters: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    productThemeId?: string;
+    sortBy?: string;
+    sortOrder?: 'ASC' | 'DESC';
+  }) {
+    const {
+      page = 1,
+      limit = 20,
+      search,
+      productThemeId,
+      sortBy = 'createdAt',
+      sortOrder = 'DESC',
+    } = filters;
 
     const qb = this.repo
       .createQueryBuilder('background')
       .leftJoinAndSelect('background.productThemes', 'productTheme')
       .where('background.deleted_at IS NULL');
 
-    if (search) qb.andWhere('background.name ILIKE :search', { search: `%${search}%` });
-    if (productThemeId) qb.andWhere('productTheme.id = :productThemeId', { productThemeId });
+    if (search) {
+      qb.andWhere('background.name ILIKE :search', { search: `%${search}%` });
+    }
 
-    qb.orderBy('background.created_at', 'DESC');
-    const results = await qb.getMany();
+    if (productThemeId) {
+      qb.andWhere('productTheme.id = :productThemeId', { productThemeId });
+    }
+
+    // Apply sorting
+    const validSortFields = ['createdAt', 'updatedAt', 'name'];
+    const sortField = validSortFields.includes(sortBy) ? sortBy : 'createdAt';
+    qb.orderBy(`background.${sortField}`, sortOrder);
+
+    // Apply pagination
+    qb.skip((page - 1) * limit).take(limit);
+
+    const [results, total] = await qb.getManyAndCount();
     
-    // Return imageUrl if exists, fallback to imageBase64 for backward compatibility
-    return results.map(bg => ({
+    // Return only imageUrl (CDN URL), no base64 fallback
+    const backgrounds = results.map(bg => ({
       ...bg,
-      imageUrl: bg.imageUrl || bg.imageBase64 || null,
+      imageUrl: bg.imageUrl || null,
     }));
+
+    return { backgrounds, total };
   }
 
   async findOne(id: string) {
@@ -92,10 +132,10 @@ export class ProductBackgroundsService {
     });
     if (!productBackground) throw new NotFoundException('Product background not found');
     
-    // Return imageUrl if exists, fallback to imageBase64 for backward compatibility
+    // Return only imageUrl (CDN URL), no base64 fallback
     return {
       ...productBackground,
-      imageUrl: productBackground.imageUrl || productBackground.imageBase64 || null,
+      imageUrl: productBackground.imageUrl || null,
     };
   }
 
@@ -107,31 +147,28 @@ export class ProductBackgroundsService {
     if (!productBackground) throw new NotFoundException('Product background not found');
 
     if (dto.productThemeIds) {
-      productBackground.productThemes = await this.productThemeRepo.findByIds(dto.productThemeIds);
+      productBackground.productThemes = await this.productThemeRepo.find({
+        where: { id: In(dto.productThemeIds) },
+      });
     }
 
     // Handle image upload if provided
     if (file) {
-      // Delete old image from GCS if exists
-      if (productBackground.imageUrl) {
-        try {
-          const oldPath = this.gcsStorageService.extractPathFromUrl(productBackground.imageUrl);
-          await this.gcsStorageService.deleteFile(oldPath);
-        } catch (error) {
-          // Log but don't fail if deletion fails
-          console.error('Failed to delete old image:', error);
-        }
-      }
-
-      // Upload new image
+      // Use overwriting strategy: reuse same path if exists, otherwise create new
       const fileExtension = file.originalname.split('.').pop() || 'jpg';
-      const gcsPath = `product-backgrounds/${id}/${uuidv4()}.${fileExtension}`;
-      const imageUrl = await this.gcsStorageService.uploadFile(
+      const gcsPath = productBackground.imagePath 
+        ? productBackground.imagePath // Reuse existing path (overwrite)
+        : `product-backgrounds/${id}/image.${fileExtension}`; // Create new path
+
+      // Upload as public file (will overwrite if path exists)
+      const imageUrl = await this.gcsStorageService.uploadPublicFile(
         file.buffer,
         gcsPath,
         file.mimetype,
       );
+      
       productBackground.imageUrl = imageUrl;
+      productBackground.imagePath = gcsPath;
     }
 
     productBackground.name = dto.name ?? productBackground.name;
@@ -139,10 +176,10 @@ export class ProductBackgroundsService {
 
     const saved = await this.repo.save(productBackground);
     
-    // Return imageUrl if exists, fallback to imageBase64 for backward compatibility
+    // Return only imageUrl (CDN URL), no base64 fallback
     return {
       ...saved,
-      imageUrl: saved.imageUrl || saved.imageBase64 || null,
+      imageUrl: saved.imageUrl || null,
     };
   }
 
@@ -166,5 +203,29 @@ export class ProductBackgroundsService {
 
     // Return updated entity (same as before)
     return this.repo.findOne({ where: { id } });
+  }
+
+  async hardDelete(id: string) {
+    const entity = await this.repo.findOne({
+      where: { id },
+      withDeleted: true,
+    });
+
+    if (!entity) {
+      throw new NotFoundException('Product background not found');
+    }
+
+    // Delete image from GCS if exists
+    if (entity.imagePath) {
+      try {
+        await this.gcsStorageService.deleteFile(entity.imagePath);
+      } catch (error) {
+        console.error('Failed to delete image from GCS:', error);
+      }
+    }
+
+    // Hard delete (permanent removal)
+    await this.repo.remove(entity);
+    return { message: 'Product background permanently deleted' };
   }
 }

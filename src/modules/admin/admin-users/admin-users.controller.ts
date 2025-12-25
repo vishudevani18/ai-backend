@@ -8,8 +8,6 @@ import {
   Patch,
   Delete,
   Query,
-  ParseIntPipe,
-  DefaultValuePipe,
   UseGuards,
   HttpCode,
   HttpStatus,
@@ -22,7 +20,6 @@ import {
   ApiOperation,
   ApiResponse,
   ApiBearerAuth,
-  ApiQuery,
   ApiParam,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
@@ -32,6 +29,7 @@ import { UserRole } from '../../../database/entities/user.entity';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import { User } from '../../../database/entities/user.entity';
 import { ResponseUtil } from '../../../common/utils/response.util';
+import { FilterAdminUsersDto } from './dto/filter-admin-users.dto';
 
 @ApiTags('Admin - Admin Users Management')
 @Controller(ROUTES.ADMIN.ADMIN_USERS)
@@ -53,16 +51,20 @@ export class AdminUsersController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'Get all admin users (Super Admin only)' })
-  @ApiQuery({ name: 'page', required: false, type: Number, description: 'Page number' })
-  @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Items per page' })
+  @ApiOperation({
+    summary: 'Get all admin users with pagination, filtering, and sorting (Super Admin only)',
+    description: 'Filter by email, phone, status. Sort by createdAt (default), updatedAt, email, firstName, lastName. Default: 20 items per page, sorted by createdAt DESC',
+  })
   @ApiResponse({ status: 200, description: 'Admins retrieved successfully' })
-  async findAll(
-    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-    @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
-  ) {
-    const { admins, total } = await this.adminUsersService.findAll(page, limit);
-    return ResponseUtil.paginated(admins, page, limit, total, 'Admins retrieved successfully');
+  async findAll(@Query() filters: FilterAdminUsersDto) {
+    const { admins, total } = await this.adminUsersService.findAll(filters);
+    return ResponseUtil.paginated(
+      admins,
+      filters.page || 1,
+      filters.limit || 20,
+      total,
+      'Admins retrieved successfully',
+    );
   }
 
   @Get(':id')

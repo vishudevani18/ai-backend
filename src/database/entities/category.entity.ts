@@ -13,7 +13,10 @@ export class Category extends BaseEntity {
   description?: string;
 
   @Column({ name: 'image_url', type: 'text', nullable: true })
-  imageUrl?: string; // CDN URL from GCS
+  imageUrl?: string; // Public CDN URL from GCS
+
+  @Column({ name: 'image_path', type: 'text', nullable: true })
+  imagePath?: string; // GCS path for deletion
 
   @ManyToOne(() => Industry, industry => industry.categories, { onDelete: 'CASCADE' })
   industry: Industry;

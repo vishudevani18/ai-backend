@@ -11,7 +11,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { randomUUID } from 'crypto';
 import { User, UserRole, UserStatus } from '../../database/entities/user.entity';
@@ -19,6 +19,7 @@ import { UserAddress } from '../../database/entities/user-address.entity';
 import { UserBusiness } from '../../database/entities/user-business.entity';
 
 import { LoginDto } from './dto/login.dto';
+import { SuperAdminLoginDto } from './dto/super-admin-login.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { AuthResponseDto } from './dto/auth-response.dto';
 import { CompleteRegistrationDto } from './dto/complete-registration.dto';
@@ -126,6 +127,62 @@ export class AuthService {
     });
 
     // 9. Final response
+    return {
+      ...tokens,
+      user: profile,
+    };
+  }
+
+  // ========================================================
+  // SUPER ADMIN LOGIN
+  // ========================================================
+  async superAdminLogin(dto: SuperAdminLoginDto): Promise<AuthResponseDto> {
+    const { email, password } = dto;
+console.log('email', email, 'password', password);
+    // 1. Find super admin by email
+    const user = await this.userRepo.findOne({
+      where: { email, role: UserRole.SUPER_ADMIN },
+    });
+console.log(user);
+    if (!user) {
+      throw new UnauthorizedException('Invalid email or password');
+    }
+
+    // 2. Compare passwords
+    const match = await bcrypt.compare(password, user.passwordHash);
+    if (!match) {
+      throw new UnauthorizedException('Invalid email or password');
+    }
+
+    // 3. Check user status
+    if (user.status !== UserStatus.ACTIVE) {
+      throw new UnauthorizedException('Account inactive or banned');
+    }
+
+    // 4. Update last login
+    const now = new Date();
+    await this.userRepo.update(user.id, { lastLogin: now });
+    user.lastLogin = now;
+
+    // 5. Generate tokens
+    const tokens = await this.generateTokens(user);
+    await this.updateRefreshToken(user.id, tokens.refreshToken);
+
+    // 6. Map User → ProfileDto
+    const profile = new ProfileDto({
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      phone: user.phone,
+      role: user.role,
+      status: user.status,
+      profileImage: user.profileImage,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    });
+
+    // 7. Final response
     return {
       ...tokens,
       user: profile,

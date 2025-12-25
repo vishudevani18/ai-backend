@@ -8,6 +8,7 @@ import {
   Query,
   Put,
   Patch,
+  Delete,
   HttpCode,
   HttpStatus,
   UseGuards,
@@ -26,6 +27,7 @@ import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
 import { Roles } from '../../../common/decorators/roles.decorator';
 import { UserRole } from '../../../database/entities/user.entity';
+import { FilterCategoriesDto } from './dto/filter-categories.dto';
 
 @ApiTags('Admin - Categories')
 @Controller(ROUTES.ADMIN.CATEGORIES)
@@ -36,13 +38,20 @@ export class CategoriesController {
   constructor(private readonly service: CategoriesService) {}
 
   @Get()
-  @ApiOperation({ summary: 'Get all categories (optionally filtered by industry or name)' })
+  @ApiOperation({
+    summary: 'Get all categories with pagination, filtering, and sorting',
+    description: 'Filter by industryId, search by name. Sort by createdAt (default), updatedAt, name. Default: 20 items per page, sorted by createdAt DESC',
+  })
   @ApiResponse({ status: 200, description: 'Categories retrieved successfully' })
-  @ApiQuery({ name: 'industryId', required: false, type: String })
-  @ApiQuery({ name: 'search', required: false, type: String })
-  async findAll(@Query('industryId') industryId?: string, @Query('search') search?: string) {
-    const result = await this.service.findAll(industryId, search);
-    return ResponseUtil.success(result, 'Categories retrieved successfully');
+  async findAll(@Query() filters: FilterCategoriesDto) {
+    const { categories, total } = await this.service.findAll(filters);
+    return ResponseUtil.paginated(
+      categories,
+      filters.page || 1,
+      filters.limit || 20,
+      total,
+      'Categories retrieved successfully',
+    );
   }
 
   @Get(':id')
@@ -85,5 +94,15 @@ export class CategoriesController {
   async softDelete(@Param('id') id: string) {
     const result = await this.service.softDelete(id);
     return ResponseUtil.success(result, 'Category soft deleted successfully');
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Hard delete (permanently delete) a category by ID' })
+  @ApiResponse({ status: 200, description: 'Category permanently deleted successfully' })
+  @ApiResponse({ status: 404, description: 'Category not found' })
+  async hardDelete(@Param('id') id: string) {
+    const result = await this.service.hardDelete(id);
+    return ResponseUtil.success(result, 'Category permanently deleted successfully');
   }
 }

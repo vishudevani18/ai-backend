@@ -17,6 +17,7 @@ export const ROUTES = {
     PRODUCT_POSES: 'admin/poses',
     PRODUCT_THEMES: 'admin/product-themes',
     PRODUCT_TYPES: 'admin/product-types',
+    AI_FACES: 'admin/ai-faces',
     USERS: 'admin/users', // Regular users management
     ADMIN_USERS: 'admin/admin-users', // Admin users management (super admin only)
     LEGAL_DOCUMENTS: 'admin/legal-documents',

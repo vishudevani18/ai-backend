@@ -31,14 +31,19 @@ export class CategoriesService {
     });
     if (existing) throw new BadRequestException('Category already exists in this industry');
 
-    const tempId = uuidv4();
     let imageUrl: string | undefined;
+    let imagePath: string | undefined;
 
     // Upload image if provided
     if (file) {
+      // Generate temporary ID for path, will update after save
+      const tempId = uuidv4();
       const fileExtension = file.originalname.split('.').pop() || 'jpg';
-      const gcsPath = `categories/${tempId}/${uuidv4()}.${fileExtension}`;
-      imageUrl = await this.gcsStorageService.uploadFile(file.buffer, gcsPath, file.mimetype);
+      const gcsPath = `categories/${tempId}/image.${fileExtension}`;
+      
+      // Upload as public file
+      imageUrl = await this.gcsStorageService.uploadPublicFile(file.buffer, gcsPath, file.mimetype);
+      imagePath = gcsPath;
     }
 
     const entity = this.repo.create({
@@ -46,34 +51,75 @@ export class CategoriesService {
       description: dto.description,
       industryId: dto.industryId,
       imageUrl,
+      imagePath,
       industry,
     });
 
     const saved = await this.repo.save(entity);
 
-    // Update GCS path with actual ID if different
-    if (file && saved.id !== tempId && imageUrl) {
-      const newPath = `categories/${saved.id}/${uuidv4()}.${file.originalname.split('.').pop() || 'jpg'}`;
-      const newUrl = await this.gcsStorageService.uploadFile(file.buffer, newPath, file.mimetype);
-      await this.gcsStorageService.deleteFile(this.gcsStorageService.extractPathFromUrl(imageUrl));
+    // Update GCS path with actual ID if different (overwrite with correct path)
+    if (file && saved.id !== imagePath?.split('/')[1]) {
+      const newPath = `categories/${saved.id}/image.${file.originalname.split('.').pop() || 'jpg'}`;
+      const newUrl = await this.gcsStorageService.uploadPublicFile(file.buffer, newPath, file.mimetype);
+      
+      // Delete old file if path changed
+      if (imagePath && imagePath !== newPath) {
+        try {
+          await this.gcsStorageService.deleteFile(imagePath);
+        } catch (error) {
+          console.error('Failed to delete old image:', error);
+        }
+      }
+      
       saved.imageUrl = newUrl;
+      saved.imagePath = newPath;
       return this.repo.save(saved);
     }
 
     return saved;
   }
 
-  async findAll(industryId?: string, search?: string) {
-    const where: any = {};
+  async findAll(filters: {
+    page?: number;
+    limit?: number;
+    industryId?: string;
+    search?: string;
+    sortBy?: string;
+    sortOrder?: 'ASC' | 'DESC';
+  }) {
+    const {
+      page = 1,
+      limit = 20,
+      industryId,
+      search,
+      sortBy = 'createdAt',
+      sortOrder = 'DESC',
+    } = filters;
 
-    if (industryId) where.industryId = industryId;
-    if (search) where.name = ILike(`%${search}%`);
+    const queryBuilder = this.repo
+      .createQueryBuilder('category')
+      .leftJoinAndSelect('category.industry', 'industry')
+      .leftJoinAndSelect('category.productTypes', 'productTypes');
 
-    return this.repo.find({
-      where,
-      relations: ['industry', 'productTypes'],
-      order: { createdAt: 'DESC' },
-    });
+    if (industryId) {
+      queryBuilder.andWhere('category.industryId = :industryId', { industryId });
+    }
+
+    if (search) {
+      queryBuilder.andWhere('category.name ILIKE :search', { search: `%${search}%` });
+    }
+
+    // Apply sorting
+    const validSortFields = ['createdAt', 'updatedAt', 'name'];
+    const sortField = validSortFields.includes(sortBy) ? sortBy : 'createdAt';
+    queryBuilder.orderBy(`category.${sortField}`, sortOrder);
+
+    // Apply pagination
+    queryBuilder.skip((page - 1) * limit).take(limit);
+
+    const [categories, total] = await queryBuilder.getManyAndCount();
+
+    return { categories, total };
   }
 
   async findOne(id: string) {
@@ -103,25 +149,21 @@ export class CategoriesService {
 
     // Handle image upload if provided
     if (file) {
-      // Delete old image from GCS if exists
-      if (category.imageUrl) {
-        try {
-          const oldPath = this.gcsStorageService.extractPathFromUrl(category.imageUrl);
-          await this.gcsStorageService.deleteFile(oldPath);
-        } catch (error) {
-          console.error('Failed to delete old image:', error);
-        }
-      }
-
-      // Upload new image
+      // Use overwriting strategy: reuse same path if exists, otherwise create new
       const fileExtension = file.originalname.split('.').pop() || 'jpg';
-      const gcsPath = `categories/${id}/${uuidv4()}.${fileExtension}`;
-      const imageUrl = await this.gcsStorageService.uploadFile(
+      const gcsPath = category.imagePath 
+        ? category.imagePath // Reuse existing path (overwrite)
+        : `categories/${id}/image.${fileExtension}`; // Create new path
+
+      // Upload as public file (will overwrite if path exists)
+      const imageUrl = await this.gcsStorageService.uploadPublicFile(
         file.buffer,
         gcsPath,
         file.mimetype,
       );
+      
       category.imageUrl = imageUrl;
+      category.imagePath = gcsPath;
     }
 
     category.name = dto.name ?? category.name;
@@ -147,5 +189,29 @@ export class CategoriesService {
     }
 
     return this.repo.findOne({ where: { id } });
+  }
+
+  async hardDelete(id: string) {
+    const entity = await this.repo.findOne({
+      where: { id },
+      withDeleted: true,
+    });
+
+    if (!entity) {
+      throw new NotFoundException('Category not found');
+    }
+
+    // Delete image from GCS if exists
+    if (entity.imagePath) {
+      try {
+        await this.gcsStorageService.deleteFile(entity.imagePath);
+      } catch (error) {
+        console.error('Failed to delete image from GCS:', error);
+      }
+    }
+
+    // Hard delete (permanent removal)
+    await this.repo.remove(entity);
+    return { message: 'Category permanently deleted' };
   }
 }

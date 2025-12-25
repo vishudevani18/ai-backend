@@ -8,6 +8,7 @@ import {
   Query,
   Put,
   Patch,
+  Delete,
   HttpCode,
   HttpStatus,
   UseGuards,
@@ -21,6 +22,7 @@ import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
 import { Roles } from '../../../common/decorators/roles.decorator';
 import { UserRole } from '../../../database/entities/user.entity';
+import { FilterIndustriesDto } from './dto/filter-industries.dto';
 
 @ApiTags('Admin - Industries')
 @Controller(ROUTES.ADMIN.INDUSTRIES)
@@ -31,12 +33,20 @@ export class IndustriesController {
   constructor(private readonly service: IndustriesService) {}
 
   @Get()
-  @ApiOperation({ summary: 'Get all industries' })
+  @ApiOperation({
+    summary: 'Get all industries with pagination, filtering, and sorting',
+    description: 'Search by name. Sort by createdAt (default), updatedAt, name. Default: 20 items per page, sorted by createdAt DESC',
+  })
   @ApiResponse({ status: 200, description: 'Industries retrieved successfully' })
-  @ApiQuery({ name: 'search', required: false, type: String })
-  async findAll(@Query('search') search?: string) {
-    const result = await this.service.findAll(search);
-    return ResponseUtil.success(result, 'Industries retrieved successfully');
+  async findAll(@Query() filters: FilterIndustriesDto) {
+    const { industries, total } = await this.service.findAll(filters);
+    return ResponseUtil.paginated(
+      industries,
+      filters.page || 1,
+      filters.limit || 20,
+      total,
+      'Industries retrieved successfully',
+    );
   }
 
   @Get(':id')
@@ -71,5 +81,15 @@ export class IndustriesController {
   async softDelete(@Param('id') id: string) {
     const result = await this.service.softDelete(id);
     return ResponseUtil.success(result, 'Industry soft deleted successfully');
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Hard delete (permanently delete) an industry by ID' })
+  @ApiResponse({ status: 200, description: 'Industry permanently deleted successfully' })
+  @ApiResponse({ status: 404, description: 'Industry not found' })
+  async hardDelete(@Param('id') id: string) {
+    const result = await this.service.hardDelete(id);
+    return ResponseUtil.success(result, 'Industry permanently deleted successfully');
   }
 }

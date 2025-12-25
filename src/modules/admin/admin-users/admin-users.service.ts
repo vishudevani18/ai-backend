@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 import { User, UserRole, UserStatus } from '../../../database/entities/user.entity';
 import { CreateAdminDto } from './dto/create-admin.dto';
 import { UpdateAdminDto } from './dto/update-admin.dto';
@@ -74,24 +74,62 @@ export class AdminUsersService {
     return adminWithoutSensitive as User;
   }
 
-  async findAll(page: number = 1, limit: number = 10): Promise<{ admins: User[]; total: number }> {
-    const [admins, total] = await this.userRepository.findAndCount({
-      where: [{ role: UserRole.ADMIN }, { role: UserRole.SUPER_ADMIN }],
-      skip: (page - 1) * limit,
-      take: limit,
-      select: [
-        'id',
-        'email',
-        'firstName',
-        'lastName',
-        'phone',
-        'role',
-        'status',
-        'createdAt',
-        'updatedAt',
-      ],
-      order: { createdAt: 'DESC' },
-    });
+  async findAll(filters: {
+    page?: number;
+    limit?: number;
+    email?: string;
+    phone?: string;
+    status?: UserStatus;
+    sortBy?: string;
+    sortOrder?: 'ASC' | 'DESC';
+  }): Promise<{ admins: User[]; total: number }> {
+    const {
+      page = 1,
+      limit = 20,
+      email,
+      phone,
+      status,
+      sortBy = 'createdAt',
+      sortOrder = 'DESC',
+    } = filters;
+
+    const queryBuilder = this.userRepository
+      .createQueryBuilder('user')
+      .where('user.role IN (:...roles)', { roles: [UserRole.ADMIN, UserRole.SUPER_ADMIN] })
+      .select([
+        'user.id',
+        'user.email',
+        'user.firstName',
+        'user.lastName',
+        'user.phone',
+        'user.role',
+        'user.status',
+        'user.createdAt',
+        'user.updatedAt',
+      ]);
+
+    // Apply filters
+    if (email) {
+      queryBuilder.andWhere('user.email ILIKE :email', { email: `%${email}%` });
+    }
+
+    if (phone) {
+      queryBuilder.andWhere('user.phone ILIKE :phone', { phone: `%${phone}%` });
+    }
+
+    if (status) {
+      queryBuilder.andWhere('user.status = :status', { status });
+    }
+
+    // Apply sorting
+    const validSortFields = ['createdAt', 'updatedAt', 'email', 'firstName', 'lastName'];
+    const sortField = validSortFields.includes(sortBy) ? sortBy : 'createdAt';
+    queryBuilder.orderBy(`user.${sortField}`, sortOrder);
+
+    // Apply pagination
+    queryBuilder.skip((page - 1) * limit).take(limit);
+
+    const [admins, total] = await queryBuilder.getManyAndCount();
 
     return { admins, total };
   }

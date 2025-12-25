@@ -12,13 +12,38 @@ export class IndustriesService {
     private readonly repo: Repository<Industry>,
   ) {}
 
-  async findAll(search?: string) {
-    const where = search ? { name: ILike(`%${search}%`) } : {};
+  async findAll(filters: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    sortBy?: string;
+    sortOrder?: 'ASC' | 'DESC';
+  }) {
+    const {
+      page = 1,
+      limit = 20,
+      search,
+      sortBy = 'createdAt',
+      sortOrder = 'DESC',
+    } = filters;
 
-    return this.repo.find({
-      where,
-      order: { createdAt: 'DESC' },
-    });
+    const queryBuilder = this.repo.createQueryBuilder('industry');
+
+    if (search) {
+      queryBuilder.andWhere('industry.name ILIKE :search', { search: `%${search}%` });
+    }
+
+    // Apply sorting
+    const validSortFields = ['createdAt', 'updatedAt', 'name'];
+    const sortField = validSortFields.includes(sortBy) ? sortBy : 'createdAt';
+    queryBuilder.orderBy(`industry.${sortField}`, sortOrder);
+
+    // Apply pagination
+    queryBuilder.skip((page - 1) * limit).take(limit);
+
+    const [industries, total] = await queryBuilder.getManyAndCount();
+
+    return { industries, total };
   }
 
   async findOne(id: string) {
@@ -56,5 +81,20 @@ export class IndustriesService {
     }
     // Load updated entity to return (same as your old code did)
     return this.repo.findOne({ where: { id } });
+  }
+
+  async hardDelete(id: string) {
+    const entity = await this.repo.findOne({
+      where: { id },
+      withDeleted: true,
+    });
+
+    if (!entity) {
+      throw new NotFoundException('Industry not found');
+    }
+
+    // Hard delete (permanent removal)
+    await this.repo.remove(entity);
+    return { message: 'Industry permanently deleted' };
   }
 }

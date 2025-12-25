@@ -12,13 +12,14 @@ export class CreateLegalDocumentsTable1736000000000 implements MigrationInterfac
     // Create legal_documents table
     await queryRunner.query(`
       CREATE TABLE "legal_documents" (
-        "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        "id" UUID NOT NULL DEFAULT gen_random_uuid(),
         "type" legal_document_type_enum NOT NULL,
         "content" TEXT NOT NULL,
         "last_updated" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         "created_at" TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
         "updated_at" TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
         "deleted_at" TIMESTAMP WITH TIME ZONE,
+        CONSTRAINT "PK_legal_documents_id" PRIMARY KEY ("id"),
         CONSTRAINT "UQ_legal_documents_type" UNIQUE ("type")
       )
     `);

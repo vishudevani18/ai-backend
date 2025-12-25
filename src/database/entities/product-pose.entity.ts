@@ -16,7 +16,10 @@ export class ProductPose extends BaseEntity {
   imageBase64?: string; // Deprecated - kept for backward compatibility
 
   @Column({ name: 'image_url', type: 'text', nullable: true })
-  imageUrl?: string; // CDN URL from GCS
+  imageUrl?: string; // Public CDN URL from GCS
+
+  @Column({ name: 'image_path', type: 'text', nullable: true })
+  imagePath?: string; // GCS path for deletion
 
   @ManyToOne(() => ProductType, pt => pt.productPoses, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'product_type_id' })

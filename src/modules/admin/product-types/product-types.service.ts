@@ -32,16 +32,47 @@ export class ProductTypesService {
     return this.repo.save(entity);
   }
 
-  async findAll(categoryId?: string, search?: string) {
-    const where: any = {};
-    if (categoryId) where.categoryId = categoryId;
-    if (search) where.name = ILike(`%${search}%`);
+  async findAll(filters: {
+    page?: number;
+    limit?: number;
+    categoryId?: string;
+    search?: string;
+    sortBy?: string;
+    sortOrder?: 'ASC' | 'DESC';
+  }) {
+    const {
+      page = 1,
+      limit = 20,
+      categoryId,
+      search,
+      sortBy = 'createdAt',
+      sortOrder = 'DESC',
+    } = filters;
 
-    return this.repo.find({
-      where,
-      relations: ['category', 'category.industry'],
-      order: { createdAt: 'DESC' },
-    });
+    const queryBuilder = this.repo
+      .createQueryBuilder('productType')
+      .leftJoinAndSelect('productType.category', 'category')
+      .leftJoinAndSelect('category.industry', 'industry');
+
+    if (categoryId) {
+      queryBuilder.andWhere('productType.categoryId = :categoryId', { categoryId });
+    }
+
+    if (search) {
+      queryBuilder.andWhere('productType.name ILIKE :search', { search: `%${search}%` });
+    }
+
+    // Apply sorting
+    const validSortFields = ['createdAt', 'updatedAt', 'name'];
+    const sortField = validSortFields.includes(sortBy) ? sortBy : 'createdAt';
+    queryBuilder.orderBy(`productType.${sortField}`, sortOrder);
+
+    // Apply pagination
+    queryBuilder.skip((page - 1) * limit).take(limit);
+
+    const [productTypes, total] = await queryBuilder.getManyAndCount();
+
+    return { productTypes, total };
   }
 
   async findOne(id: string) {
@@ -88,5 +119,20 @@ export class ProductTypesService {
 
     // Return updated product type just like before
     return this.repo.findOne({ where: { id } });
+  }
+
+  async hardDelete(id: string) {
+    const entity = await this.repo.findOne({
+      where: { id },
+      withDeleted: true,
+    });
+
+    if (!entity) {
+      throw new NotFoundException('Product type not found');
+    }
+
+    // Hard delete (permanent removal)
+    await this.repo.remove(entity);
+    return { message: 'Product type permanently deleted' };
   }
 }

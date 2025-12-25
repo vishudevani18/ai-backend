@@ -3,9 +3,9 @@ export const DEFAULT_PORT = 8080;
 
 export const DEFAULT_DB_HOST = 'localhost';
 export const DEFAULT_DB_PORT = 5432;
-export const DEFAULT_DB_USERNAME = 'postgres';
+export const DEFAULT_DB_USERNAME = 'dbuser';
 export const DEFAULT_DB_PASSWORD = 'password';
-export const DEFAULT_DB_DATABASE = 'saas_dev';
+export const DEFAULT_DB_DATABASE = 'ai_photo_studio_db';
 
 export const DEFAULT_JWT_SECRET = 'default-secret';
 export const DEFAULT_JWT_EXPIRES_IN = '15m';
@@ -50,7 +50,6 @@ export const DEFAULT_CLOUDINARY_API_SECRET = 'your-api-secret';
 
 export const DEFAULT_GCS_BUCKET_NAME = 'your-gcs-bucket';
 export const DEFAULT_GCS_PROJECT_ID = 'your-gcs-project-id';
-export const DEFAULT_GCS_KEY_FILENAME = './gcs-service-account.json';
 export const DEFAULT_GCS_CDN_BASE_URL = 'https://storage.googleapis.com';
 
 export const DEFAULT_BASE_URL = 'http://localhost:8080';

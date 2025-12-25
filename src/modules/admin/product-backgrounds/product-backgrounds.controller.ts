@@ -8,6 +8,7 @@ import {
   Query,
   Put,
   Patch,
+  Delete,
   HttpCode,
   HttpStatus,
   UseGuards,
@@ -26,6 +27,7 @@ import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
 import { Roles } from '../../../common/decorators/roles.decorator';
 import { UserRole } from '../../../database/entities/user.entity';
+import { FilterProductBackgroundsDto } from './dto/filter-product-backgrounds.dto';
 
 @ApiTags('Admin - Product Backgrounds')
 @Controller(ROUTES.ADMIN.PRODUCT_BACKGROUNDS)
@@ -37,17 +39,19 @@ export class ProductBackgroundsController {
 
   @Get()
   @ApiOperation({
-    summary: 'Get all product backgrounds (optionally filter by product theme or search)',
+    summary: 'Get all product backgrounds with pagination, filtering, and sorting',
+    description: 'Filter by productThemeId, search by name. Sort by createdAt (default), updatedAt, name. Default: 20 items per page, sorted by createdAt DESC',
   })
   @ApiResponse({ status: 200, description: 'Product backgrounds retrieved successfully' })
-  @ApiQuery({ name: 'search', required: false, type: String })
-  @ApiQuery({ name: 'productThemeId', required: false, type: String })
-  async findAll(
-    @Query('search') search?: string,
-    @Query('productThemeId') productThemeId?: string,
-  ) {
-    const result = await this.service.findAll(search, productThemeId);
-    return ResponseUtil.success(result, 'Product backgrounds retrieved successfully');
+  async findAll(@Query() filters: FilterProductBackgroundsDto) {
+    const { backgrounds, total } = await this.service.findAll(filters);
+    return ResponseUtil.paginated(
+      backgrounds,
+      filters.page || 1,
+      filters.limit || 20,
+      total,
+      'Product backgrounds retrieved successfully',
+    );
   }
 
   @HttpCode(HttpStatus.OK)
@@ -97,5 +101,15 @@ export class ProductBackgroundsController {
   async softDelete(@Param('id') id: string) {
     const result = await this.service.softDelete(id);
     return ResponseUtil.success(result, 'Product background updated successfully');
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Hard delete (permanently delete) a product background by ID' })
+  @ApiResponse({ status: 200, description: 'Product background permanently deleted successfully' })
+  @ApiResponse({ status: 404, description: 'Product background not found' })
+  async hardDelete(@Param('id') id: string) {
+    const result = await this.service.hardDelete(id);
+    return ResponseUtil.success(result, 'Product background permanently deleted successfully');
   }
 }

@@ -39,7 +39,6 @@ import {
   DEFAULT_CLOUDINARY_API_SECRET,
   DEFAULT_GCS_BUCKET_NAME,
   DEFAULT_GCS_PROJECT_ID,
-  DEFAULT_GCS_KEY_FILENAME,
   DEFAULT_GCS_CDN_BASE_URL,
   DEFAULT_BASE_URL,
   DEFAULT_WHATSAPP_PROVIDER,
@@ -115,7 +114,6 @@ export default registerAs('app', () => ({
     gcs: {
       bucketName: process.env.GCS_BUCKET_NAME || DEFAULT_GCS_BUCKET_NAME,
       projectId: process.env.GCS_PROJECT_ID || DEFAULT_GCS_PROJECT_ID,
-      keyFilename: process.env.GCS_KEY_FILENAME || DEFAULT_GCS_KEY_FILENAME,
       cdnBaseUrl: process.env.GCS_CDN_BASE_URL || DEFAULT_GCS_CDN_BASE_URL,
     },
   },

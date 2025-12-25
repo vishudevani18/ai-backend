@@ -1,5 +1,5 @@
 import { DataSource } from 'typeorm';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 import { User, UserRole, UserStatus } from '../entities/user.entity';
 import { BCRYPT_SALT_ROUNDS } from '../../common/constants/auth.constants';
 

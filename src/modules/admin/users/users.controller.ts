@@ -6,8 +6,6 @@ import {
   Delete,
   Param,
   Query,
-  ParseIntPipe,
-  DefaultValuePipe,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -15,7 +13,6 @@ import {
   ApiOperation,
   ApiResponse,
   ApiBearerAuth,
-  ApiQuery,
   ApiParam,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
@@ -26,6 +23,7 @@ import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import { User } from '../../../database/entities/user.entity';
 import { AdminUsersService } from './users.service';
 import { ResponseUtil } from '../../../common/utils/response.util';
+import { FilterUsersDto } from './dto/filter-users.dto';
 
 @ApiTags('Admin - User Management')
 @Controller(ROUTES.ADMIN.USERS)
@@ -36,16 +34,20 @@ export class AdminUsersController {
   constructor(private readonly adminUsersService: AdminUsersService) {}
 
   @Get()
-  @ApiOperation({ summary: 'Get all regular users (Admin/Super Admin only)' })
-  @ApiQuery({ name: 'page', required: false, type: Number, description: 'Page number' })
-  @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Items per page' })
+  @ApiOperation({
+    summary: 'Get all regular users with pagination, filtering, and sorting (Admin/Super Admin only)',
+    description: 'Filter by email, phone, status. Sort by createdAt (default), updatedAt, email, firstName, lastName. Default: 20 items per page, sorted by createdAt DESC',
+  })
   @ApiResponse({ status: 200, description: 'Users retrieved successfully' })
-  async findAll(
-    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-    @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
-  ) {
-    const { users, total } = await this.adminUsersService.findAll(page, limit);
-    return ResponseUtil.paginated(users, page, limit, total, 'Users retrieved successfully');
+  async findAll(@Query() filters: FilterUsersDto) {
+    const { users, total } = await this.adminUsersService.findAll(filters);
+    return ResponseUtil.paginated(
+      users,
+      filters.page || 1,
+      filters.limit || 20,
+      total,
+      'Users retrieved successfully',
+    );
   }
 
   @Get(':id')

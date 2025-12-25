@@ -46,8 +46,8 @@ export const validationSchema = Joi.object({
   MAX_FILE_SIZE: Joi.number().default(DEFAULT_MAX_FILE_SIZE),
   UPLOAD_PATH: Joi.string().default(DEFAULT_UPLOAD_PATH),
 
-  // Gemini API
-  GEMINI_API_KEY: Joi.string().required(),
+  // Gemini API (Optional - has default, but AI features won't work without it)
+  GEMINI_API_KEY: Joi.string().optional(),
   GEMINI_API_URL: Joi.string().default(DEFAULT_GEMINI_API_URL),
 
   // Logging
@@ -58,9 +58,9 @@ export const validationSchema = Joi.object({
   CSRF_ENABLED: Joi.boolean().default(DEFAULT_CSRF_ENABLED),
   HELMET_ENABLED: Joi.boolean().default(DEFAULT_HELMET_ENABLED),
 
-  // Stripe
-  STRIPE_SECRET_KEY: Joi.string().required(),
-  STRIPE_WEBHOOK_SECRET: Joi.string().required(),
+  // Stripe (Optional - only required if using payment features)
+  STRIPE_SECRET_KEY: Joi.string().optional(),
+  STRIPE_WEBHOOK_SECRET: Joi.string().optional(),
 
   // WhatsApp Business API - Optional
   WHATSAPP_PROVIDER: Joi.string().valid('meta-direct', 'msg91', 'gupshup').optional(),
@@ -86,6 +86,5 @@ export const validationSchema = Joi.object({
   // GCS Configuration
   GCS_BUCKET_NAME: Joi.string().optional(),
   GCS_PROJECT_ID: Joi.string().optional(),
-  GCS_KEY_FILENAME: Joi.string().optional(),
   GCS_CDN_BASE_URL: Joi.string().uri().optional(),
 });

@@ -1,5 +1,6 @@
 import { IsString, IsUUID, IsOptional, Length, IsArray } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
 
 export class CreateProductPoseDto {
   @ApiProperty({ example: 'Look-Left', description: 'Product pose display name' })
@@ -24,8 +25,26 @@ export class CreateProductPoseDto {
   @IsUUID()
   productTypeId: string;
 
-  @ApiProperty({ example: ['uuid-of-product-background'], required: false, description: 'Associated product background IDs' })
+  @ApiProperty({ 
+    example: ['uuid-of-product-background'], 
+    required: false, 
+    description: 'Array of product background IDs. Can be sent as JSON string in multipart/form-data: ["uuid1", "uuid2"]'
+  })
   @IsOptional()
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      try {
+        return JSON.parse(value);
+      } catch {
+        // If not valid JSON, treat as single value or comma-separated
+        if (value.includes(',')) {
+          return value.split(',').map((v: string) => v.trim());
+        }
+        return [value];
+      }
+    }
+    return Array.isArray(value) ? value : [value];
+  })
   @IsArray()
   @IsUUID('all', { each: true })
   productBackgroundIds?: string[];

@@ -22,6 +22,7 @@ import {
 import { AuthService } from './auth.service';
 
 import { LoginDto } from './dto/login.dto';
+import { SuperAdminLoginDto } from './dto/super-admin-login.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { AuthResponseDto } from './dto/auth-response.dto';
 import { SendOtpDto } from './dto/send-otp.dto';
@@ -105,6 +106,22 @@ export class AuthController {
   async login(@Body() loginDto: LoginDto) {
     const result = await this.authService.login(loginDto);
     return ResponseUtil.success(result, 'User logged in successfully');
+  }
+
+  @Public()
+  @Post('admin/login')
+  @RateLimit({ limit: 10, window: 60 * 15 })
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Login super admin with email and password' })
+  @ApiBody({ type: SuperAdminLoginDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Super admin successfully logged in',
+    type: AuthResponseDto,
+  })
+  async superAdminLogin(@Body() loginDto: SuperAdminLoginDto) {
+    const result = await this.authService.superAdminLogin(loginDto);
+    return ResponseUtil.success(result, 'Super admin logged in successfully');
   }
 
   // -----------------------------------------------------

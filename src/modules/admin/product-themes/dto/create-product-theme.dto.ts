@@ -1,5 +1,6 @@
 import { IsString, IsOptional, Length, IsUUID, IsArray } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
 
 export class CreateProductThemeDto {
   @ApiProperty({ example: 'Vintage', description: 'Product theme name' })
@@ -12,8 +13,26 @@ export class CreateProductThemeDto {
   @IsString()
   description?: string;
 
-  @ApiProperty({ example: ['uuid-of-product-type'], required: false })
+  @ApiProperty({ 
+    example: ['uuid-of-product-type'], 
+    required: false,
+    description: 'Array of product type IDs. Can be sent as JSON string in multipart/form-data: ["uuid1", "uuid2"]'
+  })
   @IsOptional()
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      try {
+        return JSON.parse(value);
+      } catch {
+        // If not valid JSON, treat as single value or comma-separated
+        if (value.includes(',')) {
+          return value.split(',').map((v: string) => v.trim());
+        }
+        return [value];
+      }
+    }
+    return Array.isArray(value) ? value : [value];
+  })
   @IsArray()
   @IsUUID('all', { each: true })
   productTypeIds?: string[];

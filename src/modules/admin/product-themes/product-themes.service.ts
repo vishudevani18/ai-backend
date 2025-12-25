@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, ILike } from 'typeorm';
+import { Repository, ILike, In } from 'typeorm';
 import { ProductTheme } from '../../../database/entities/product-theme.entity';
 import { CreateProductThemeDto } from './dto/create-product-theme.dto';
 import { UpdateProductThemeDto } from './dto/update-product-theme.dto';
@@ -20,49 +20,93 @@ export class ProductThemesService {
 
   async create(dto: CreateProductThemeDto, file?: Express.Multer.File): Promise<ProductTheme> {
     const productTypes = dto.productTypeIds
-      ? await this.productTypeRepo.findByIds(dto.productTypeIds)
+      ? await this.productTypeRepo.find({
+          where: { id: In(dto.productTypeIds) },
+        })
       : [];
 
-    const tempId = uuidv4();
     let imageUrl: string | undefined;
+    let imagePath: string | undefined;
 
     // Upload image if provided
     if (file) {
+      // Generate temporary ID for path, will update after save
+      const tempId = uuidv4();
       const fileExtension = file.originalname.split('.').pop() || 'jpg';
-      const gcsPath = `themes/${tempId}/${uuidv4()}.${fileExtension}`;
-      imageUrl = await this.gcsStorageService.uploadFile(file.buffer, gcsPath, file.mimetype);
+      const gcsPath = `product-themes/${tempId}/image.${fileExtension}`;
+      
+      // Upload as public file
+      imageUrl = await this.gcsStorageService.uploadPublicFile(file.buffer, gcsPath, file.mimetype);
+      imagePath = gcsPath;
     }
 
     const productTheme = this.repo.create({
       name: dto.name,
       description: dto.description,
       imageUrl,
+      imagePath,
       productTypes,
     });
 
     const saved = await this.repo.save(productTheme);
 
-    // Update GCS path with actual ID if different
-    if (file && saved.id !== tempId && imageUrl) {
-      const newPath = `themes/${saved.id}/${uuidv4()}.${file.originalname.split('.').pop() || 'jpg'}`;
-      const newUrl = await this.gcsStorageService.uploadFile(file.buffer, newPath, file.mimetype);
-      await this.gcsStorageService.deleteFile(this.gcsStorageService.extractPathFromUrl(imageUrl));
+    // Update GCS path with actual ID if different (overwrite with correct path)
+    if (file && saved.id !== imagePath?.split('/')[1]) {
+      const newPath = `product-themes/${saved.id}/image.${file.originalname.split('.').pop() || 'jpg'}`;
+      const newUrl = await this.gcsStorageService.uploadPublicFile(file.buffer, newPath, file.mimetype);
+      
+      // Delete old file if path changed
+      if (imagePath && imagePath !== newPath) {
+        try {
+          await this.gcsStorageService.deleteFile(imagePath);
+        } catch (error) {
+          console.error('Failed to delete old image:', error);
+        }
+      }
+      
       saved.imageUrl = newUrl;
+      saved.imagePath = newPath;
       return this.repo.save(saved);
     }
 
     return saved;
   }
 
-  async findAll(search?: string) {
-    const where: Record<string, unknown> = {};
-    if (search) where.name = ILike(`%${search}%`);
+  async findAll(filters: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    sortBy?: string;
+    sortOrder?: 'ASC' | 'DESC';
+  }) {
+    const {
+      page = 1,
+      limit = 20,
+      search,
+      sortBy = 'createdAt',
+      sortOrder = 'DESC',
+    } = filters;
 
-    return this.repo.find({
-      where,
-      relations: ['productTypes', 'productBackgrounds'],
-      order: { createdAt: 'DESC' },
-    });
+    const queryBuilder = this.repo
+      .createQueryBuilder('theme')
+      .leftJoinAndSelect('theme.productTypes', 'productTypes')
+      .leftJoinAndSelect('theme.productBackgrounds', 'productBackgrounds');
+
+    if (search) {
+      queryBuilder.andWhere('theme.name ILIKE :search', { search: `%${search}%` });
+    }
+
+    // Apply sorting
+    const validSortFields = ['createdAt', 'updatedAt', 'name'];
+    const sortField = validSortFields.includes(sortBy) ? sortBy : 'createdAt';
+    queryBuilder.orderBy(`theme.${sortField}`, sortOrder);
+
+    // Apply pagination
+    queryBuilder.skip((page - 1) * limit).take(limit);
+
+    const [themes, total] = await queryBuilder.getManyAndCount();
+
+    return { themes, total };
   }
 
   async findOne(id: string) {
@@ -82,26 +126,28 @@ export class ProductThemesService {
     if (!productTheme) throw new NotFoundException('Product theme not found');
 
     if (dto.productTypeIds) {
-      productTheme.productTypes = await this.productTypeRepo.findByIds(dto.productTypeIds);
+      productTheme.productTypes = await this.productTypeRepo.find({
+        where: { id: In(dto.productTypeIds) },
+      });
     }
 
     // Handle image upload if provided
     if (file) {
-      // Delete old image from GCS if exists
-      if (productTheme.imageUrl) {
-        try {
-          const oldPath = this.gcsStorageService.extractPathFromUrl(productTheme.imageUrl);
-          await this.gcsStorageService.deleteFile(oldPath);
-        } catch (error) {
-          console.error('Failed to delete old image:', error);
-        }
-      }
-
-      // Upload new image
+      // Use overwriting strategy: reuse same path if exists, otherwise create new
       const fileExtension = file.originalname.split('.').pop() || 'jpg';
-      const gcsPath = `themes/${id}/${uuidv4()}.${fileExtension}`;
-      const imageUrl = await this.gcsStorageService.uploadFile(file.buffer, gcsPath, file.mimetype);
+      const gcsPath = productTheme.imagePath 
+        ? productTheme.imagePath // Reuse existing path (overwrite)
+        : `product-themes/${id}/image.${fileExtension}`; // Create new path
+
+      // Upload as public file (will overwrite if path exists)
+      const imageUrl = await this.gcsStorageService.uploadPublicFile(
+        file.buffer,
+        gcsPath,
+        file.mimetype,
+      );
+      
       productTheme.imageUrl = imageUrl;
+      productTheme.imagePath = gcsPath;
     }
 
     productTheme.name = dto.name ?? productTheme.name;
@@ -130,5 +176,29 @@ export class ProductThemesService {
 
     // Return updated entity (same behavior as before)
     return this.repo.findOne({ where: { id } });
+  }
+
+  async hardDelete(id: string) {
+    const entity = await this.repo.findOne({
+      where: { id },
+      withDeleted: true,
+    });
+
+    if (!entity) {
+      throw new NotFoundException('Product theme not found');
+    }
+
+    // Delete image from GCS if exists
+    if (entity.imagePath) {
+      try {
+        await this.gcsStorageService.deleteFile(entity.imagePath);
+      } catch (error) {
+        console.error('Failed to delete image from GCS:', error);
+      }
+    }
+
+    // Hard delete (permanent removal)
+    await this.repo.remove(entity);
+    return { message: 'Product theme permanently deleted' };
   }
 }

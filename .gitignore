@@ -198,3 +198,4 @@ test-uploads/
 # Database
 *.sqlite
 *.db
+gcs-service-account.json

@@ -8,6 +8,9 @@ import {
   Query,
   Put,
   Patch,
+  Delete,
+  HttpCode,
+  HttpStatus,
   UseGuards,
   UseInterceptors,
   UploadedFile,
@@ -24,6 +27,7 @@ import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
 import { Roles } from '../../../common/decorators/roles.decorator';
 import { UserRole } from '../../../database/entities/user.entity';
+import { FilterProductPosesDto } from './dto/filter-product-poses.dto';
 
 @ApiTags('Admin - Product Poses')
 @Controller(ROUTES.ADMIN.PRODUCT_POSES)
@@ -34,13 +38,20 @@ export class ProductPosesController {
   constructor(private readonly service: ProductPosesService) {}
 
   @Get()
-  @ApiOperation({ summary: 'Get all product poses (filter by productTypeId or search by name)' })
+  @ApiOperation({
+    summary: 'Get all product poses with pagination, filtering, and sorting',
+    description: 'Filter by productTypeId, search by name. Sort by createdAt (default), updatedAt, name. Default: 20 items per page, sorted by createdAt DESC',
+  })
   @ApiResponse({ status: 200, description: 'Product poses retrieved successfully' })
-  @ApiQuery({ name: 'productTypeId', required: false, type: String })
-  @ApiQuery({ name: 'search', required: false, type: String })
-  async findAll(@Query('productTypeId') productTypeId?: string, @Query('search') search?: string) {
-    const result = await this.service.findAll(productTypeId, search);
-    return ResponseUtil.success(result, 'Product pose retrieved successfully');
+  async findAll(@Query() filters: FilterProductPosesDto) {
+    const { poses, total } = await this.service.findAll(filters);
+    return ResponseUtil.paginated(
+      poses,
+      filters.page || 1,
+      filters.limit || 20,
+      total,
+      'Product poses retrieved successfully',
+    );
   }
 
   @Get(':id')
@@ -86,5 +97,15 @@ export class ProductPosesController {
   async softDelete(@Param('id') id: string) {
     const result = await this.service.softDelete(id);
     return ResponseUtil.success(result, 'Product pose updated successfully');
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Hard delete (permanently delete) a product pose by ID' })
+  @ApiResponse({ status: 200, description: 'Product pose permanently deleted successfully' })
+  @ApiResponse({ status: 404, description: 'Product pose not found' })
+  async hardDelete(@Param('id') id: string) {
+    const result = await this.service.hardDelete(id);
+    return ResponseUtil.success(result, 'Product pose permanently deleted successfully');
   }
 }

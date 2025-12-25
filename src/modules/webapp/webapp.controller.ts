@@ -1,16 +1,12 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import { Controller, Get } from '@nestjs/common';
 import { WebAppService } from './webapp.service';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
-import { UserRole } from '../../database/entities/user.entity';
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 
 @ApiTags('WebApp - User')
 @Controller('webapp')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.USER)
-@ApiBearerAuth()
+//@UseGuards(JwtAuthGuard, RolesGuard)
+//@Roles(UserRole.USER)
+//@ApiBearerAuth()
 export class WebAppController {
   constructor(private readonly service: WebAppService) {}
 
