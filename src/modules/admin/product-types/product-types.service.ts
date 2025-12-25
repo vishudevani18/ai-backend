@@ -39,6 +39,7 @@ export class ProductTypesService {
     search?: string;
     sortBy?: string;
     sortOrder?: 'ASC' | 'DESC';
+    includeDeleted?: boolean;
   }) {
     const {
       page = 1,
@@ -47,12 +48,17 @@ export class ProductTypesService {
       search,
       sortBy = 'createdAt',
       sortOrder = 'DESC',
+      includeDeleted = false,
     } = filters;
 
     const queryBuilder = this.repo
       .createQueryBuilder('productType')
       .leftJoinAndSelect('productType.category', 'category')
       .leftJoinAndSelect('category.industry', 'industry');
+
+    if (includeDeleted) {
+      queryBuilder.withDeleted().andWhere('productType.deletedAt IS NOT NULL');
+    }
 
     if (categoryId) {
       queryBuilder.andWhere('productType.categoryId = :categoryId', { categoryId });

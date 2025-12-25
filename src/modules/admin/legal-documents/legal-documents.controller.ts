@@ -61,12 +61,13 @@ export class LegalDocumentsController {
     const document = await this.legalDocumentsService.getPrivacyPolicy();
     if (!document) {
       return ResponseUtil.success(
-        { content: '', lastUpdated: null },
+        { id: null, content: '', lastUpdated: null },
         'Privacy policy not found',
       );
     }
     return ResponseUtil.success(
       {
+        id: document.id,
         content: document.content,
         lastUpdated: document.lastUpdated,
       },
@@ -83,12 +84,13 @@ export class LegalDocumentsController {
     const document = await this.legalDocumentsService.getTermsOfService();
     if (!document) {
       return ResponseUtil.success(
-        { content: '', lastUpdated: null },
+        { id: null, content: '', lastUpdated: null },
         'Terms of service not found',
       );
     }
     return ResponseUtil.success(
       {
+        id: document.id,
         content: document.content,
         lastUpdated: document.lastUpdated,
       },

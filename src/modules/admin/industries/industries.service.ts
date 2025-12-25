@@ -18,6 +18,7 @@ export class IndustriesService {
     search?: string;
     sortBy?: string;
     sortOrder?: 'ASC' | 'DESC';
+    includeDeleted?: boolean;
   }) {
     const {
       page = 1,
@@ -25,9 +26,14 @@ export class IndustriesService {
       search,
       sortBy = 'createdAt',
       sortOrder = 'DESC',
+      includeDeleted = false,
     } = filters;
 
     const queryBuilder = this.repo.createQueryBuilder('industry');
+
+    if (includeDeleted) {
+      queryBuilder.withDeleted().andWhere('industry.deletedAt IS NOT NULL');
+    }
 
     if (search) {
       queryBuilder.andWhere('industry.name ILIKE :search', { search: `%${search}%` });

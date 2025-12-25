@@ -40,8 +40,9 @@ export class ProductBackgroundsController {
   @Get()
   @ApiOperation({
     summary: 'Get all product backgrounds with pagination, filtering, and sorting',
-    description: 'Filter by productThemeId, search by name. Sort by createdAt (default), updatedAt, name. Default: 20 items per page, sorted by createdAt DESC',
+    description: 'Filter by productThemeId, search by name. Use includeDeleted=true to show only soft-deleted items. Sort by createdAt (default), updatedAt, name. Default: 20 items per page, sorted by createdAt DESC',
   })
+  @ApiQuery({ name: 'includeDeleted', required: false, type: Boolean, description: 'Show only soft-deleted items (default: false - shows only active items)', example: false })
   @ApiResponse({ status: 200, description: 'Product backgrounds retrieved successfully' })
   async findAll(@Query() filters: FilterProductBackgroundsDto) {
     const { backgrounds, total } = await this.service.findAll(filters);
@@ -96,8 +97,8 @@ export class ProductBackgroundsController {
 
   @Patch(':id/soft-delete')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Soft delete a product background' })
-  @ApiResponse({ status: 200, description: 'Product background soft deleted successfully' })
+  @ApiOperation({ summary: 'Toggle soft delete status for a product background (restores if deleted, deletes if active)' })
+  @ApiResponse({ status: 200, description: 'Product background status toggled successfully' })
   async softDelete(@Param('id') id: string) {
     const result = await this.service.softDelete(id);
     return ResponseUtil.success(result, 'Product background updated successfully');

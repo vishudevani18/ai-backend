@@ -78,6 +78,7 @@ export class ProductThemesService {
     search?: string;
     sortBy?: string;
     sortOrder?: 'ASC' | 'DESC';
+    includeDeleted?: boolean;
   }) {
     const {
       page = 1,
@@ -85,12 +86,17 @@ export class ProductThemesService {
       search,
       sortBy = 'createdAt',
       sortOrder = 'DESC',
+      includeDeleted = false,
     } = filters;
 
     const queryBuilder = this.repo
       .createQueryBuilder('theme')
       .leftJoinAndSelect('theme.productTypes', 'productTypes')
       .leftJoinAndSelect('theme.productBackgrounds', 'productBackgrounds');
+
+    if (includeDeleted) {
+      queryBuilder.withDeleted().andWhere('theme.deletedAt IS NOT NULL');
+    }
 
     if (search) {
       queryBuilder.andWhere('theme.name ILIKE :search', { search: `%${search}%` });

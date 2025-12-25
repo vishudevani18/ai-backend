@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsOptional, IsString } from 'class-validator';
+import { IsOptional, IsString, IsBoolean } from 'class-validator';
+import { Type } from 'class-transformer';
 import { PaginationQueryDto } from '../../../../common/dto/pagination-query.dto';
 
 export class FilterProductThemesDto extends PaginationQueryDto {
@@ -7,5 +8,11 @@ export class FilterProductThemesDto extends PaginationQueryDto {
   @IsOptional()
   @IsString()
   search?: string;
+
+  @ApiProperty({ required: false, default: false, description: 'Show only soft-deleted items (when true, returns only deleted items)' })
+  @IsOptional()
+  @IsBoolean()
+  @Type(() => Boolean)
+  includeDeleted?: boolean = false;
 }
 

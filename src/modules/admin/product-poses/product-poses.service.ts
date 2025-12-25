@@ -93,6 +93,7 @@ export class ProductPosesService {
     search?: string;
     sortBy?: string;
     sortOrder?: 'ASC' | 'DESC';
+    includeDeleted?: boolean;
   }) {
     const {
       page = 1,
@@ -101,6 +102,7 @@ export class ProductPosesService {
       search,
       sortBy = 'createdAt',
       sortOrder = 'DESC',
+      includeDeleted = false,
     } = filters;
 
     const queryBuilder = this.repo
@@ -108,6 +110,10 @@ export class ProductPosesService {
       .leftJoinAndSelect('pose.productType', 'productType')
       .leftJoinAndSelect('productType.category', 'category')
       .leftJoinAndSelect('pose.productBackgrounds', 'productBackgrounds');
+
+    if (includeDeleted) {
+      queryBuilder.withDeleted().andWhere('pose.deletedAt IS NOT NULL');
+    }
 
     if (productTypeId) {
       queryBuilder.andWhere('pose.productTypeId = :productTypeId', { productTypeId });

@@ -90,12 +90,17 @@ export class AiFacesService {
       search,
       sortBy = 'createdAt',
       sortOrder = 'DESC',
+      includeDeleted = false,
     } = filters;
 
     const queryBuilder = this.repo
       .createQueryBuilder('aiFace')
       .leftJoinAndSelect('aiFace.category', 'category')
       .leftJoinAndSelect('category.industry', 'industry');
+
+    if (includeDeleted) {
+      queryBuilder.withDeleted().andWhere('aiFace.deletedAt IS NOT NULL');
+    }
 
     if (categoryId) {
       queryBuilder.andWhere('aiFace.categoryId = :categoryId', { categoryId });

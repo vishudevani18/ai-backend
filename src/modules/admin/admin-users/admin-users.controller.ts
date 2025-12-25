@@ -103,11 +103,12 @@ export class AdminUsersController {
   }
 
   @Patch(':id/toggle-active')
-  @ApiOperation({ summary: 'Toggle admin user active status (Super Admin only)' })
+  @ApiOperation({ summary: 'Toggle admin user active/inactive status (Super Admin only). Switches between ACTIVE and INACTIVE status. Cannot deactivate yourself.' })
   @ApiParam({ name: 'id', description: 'Admin ID' })
-  @ApiResponse({ status: 200, description: 'Admin status toggled successfully' })
+  @ApiResponse({ status: 200, description: 'Admin status toggled successfully. Returns updated admin with new status.' })
   @ApiResponse({ status: 404, description: 'Admin not found' })
   @ApiResponse({ status: 400, description: 'Cannot deactivate yourself' })
+  @ApiResponse({ status: 401, description: 'Unauthorized - Only super admin can toggle admin status' })
   async toggleActive(@Param('id') id: string, @CurrentUser() currentUser: User) {
     const admin = await this.adminUsersService.toggleActive(id, currentUser.id);
     return ResponseUtil.success(admin, 'Admin status toggled successfully');

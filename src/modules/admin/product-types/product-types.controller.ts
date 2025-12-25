@@ -22,8 +22,10 @@ export class ProductTypesController {
   @Get()
   @ApiOperation({
     summary: 'Get all product types with pagination, filtering, and sorting',
-    description: 'Filter by categoryId, search by name. Sort by createdAt (default), updatedAt, name. Default: 20 items per page, sorted by createdAt DESC',
+    description: 'Filter by categoryId, search by name. Use includeDeleted=true to show only soft-deleted items. Sort by createdAt (default), updatedAt, name. Default: 20 items per page, sorted by createdAt DESC',
   })
+  @ApiQuery({ name: 'includeDeleted', required: false, type: Boolean, description: 'Show only soft-deleted items (default: false - shows only active items)', example: false })
+  @ApiResponse({ status: 200, description: 'Product types retrieved successfully' })
   async findAll(@Query() filters: FilterProductTypesDto) {
     const { productTypes, total } = await this.service.findAll(filters);
     return ResponseUtil.paginated(
@@ -57,7 +59,8 @@ export class ProductTypesController {
   }
 
   @Patch(':id/soft-delete')
-  @ApiOperation({ summary: 'Soft delete a product type by ID' })
+  @ApiOperation({ summary: 'Toggle soft delete status for a product type (restores if deleted, deletes if active)' })
+  @ApiResponse({ status: 200, description: 'Product type status toggled successfully' })
   async softDelete(@Param('id') id: string) {
     const result = await this.service.softDelete(id);
     return ResponseUtil.success(result, 'Product Types updated successfully');

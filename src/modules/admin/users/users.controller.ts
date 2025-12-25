@@ -36,7 +36,7 @@ export class AdminUsersController {
   @Get()
   @ApiOperation({
     summary: 'Get all regular users with pagination, filtering, and sorting (Admin/Super Admin only)',
-    description: 'Filter by email, phone, status. Sort by createdAt (default), updatedAt, email, firstName, lastName. Default: 20 items per page, sorted by createdAt DESC',
+    description: 'Filter by email, phone, status. Returns lastLogin, emailVerified, and profileImage fields. Sort by createdAt (default), updatedAt, email, firstName, lastName. Default: 20 items per page, sorted by createdAt DESC',
   })
   @ApiResponse({ status: 200, description: 'Users retrieved successfully' })
   async findAll(@Query() filters: FilterUsersDto) {
@@ -53,7 +53,7 @@ export class AdminUsersController {
   @Get(':id')
   @ApiOperation({ summary: 'Get user by ID (Admin/Super Admin only)' })
   @ApiParam({ name: 'id', description: 'User ID' })
-  @ApiResponse({ status: 200, description: 'User retrieved successfully' })
+  @ApiResponse({ status: 200, description: 'User retrieved successfully. Includes lastLogin, emailVerified, and profileImage fields.' })
   @ApiResponse({ status: 404, description: 'User not found' })
   async findOne(@Param('id') id: string) {
     const user = await this.adminUsersService.findOne(id);
@@ -61,10 +61,11 @@ export class AdminUsersController {
   }
 
   @Patch(':id/toggle-active')
-  @ApiOperation({ summary: 'Toggle user active status (Admin/Super Admin only)' })
+  @ApiOperation({ summary: 'Toggle user active/inactive status (Admin/Super Admin only). Switches between ACTIVE and INACTIVE status.' })
   @ApiParam({ name: 'id', description: 'User ID' })
-  @ApiResponse({ status: 200, description: 'User status toggled successfully' })
+  @ApiResponse({ status: 200, description: 'User status toggled successfully. Returns updated user with new status.' })
   @ApiResponse({ status: 404, description: 'User not found' })
+  @ApiResponse({ status: 401, description: 'Unauthorized - Only admins can toggle user status' })
   async toggleActive(@Param('id') id: string, @CurrentUser() currentUser: User) {
     const user = await this.adminUsersService.toggleActive(id, currentUser.id);
     return ResponseUtil.success(user, 'User status toggled successfully');

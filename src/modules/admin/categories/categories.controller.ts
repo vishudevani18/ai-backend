@@ -40,8 +40,9 @@ export class CategoriesController {
   @Get()
   @ApiOperation({
     summary: 'Get all categories with pagination, filtering, and sorting',
-    description: 'Filter by industryId, search by name. Sort by createdAt (default), updatedAt, name. Default: 20 items per page, sorted by createdAt DESC',
+    description: 'Filter by industryId, search by name. Use includeDeleted=true to show only soft-deleted items. Sort by createdAt (default), updatedAt, name. Default: 20 items per page, sorted by createdAt DESC',
   })
+  @ApiQuery({ name: 'includeDeleted', required: false, type: Boolean, description: 'Show only soft-deleted items (default: false - shows only active items)', example: false })
   @ApiResponse({ status: 200, description: 'Categories retrieved successfully' })
   async findAll(@Query() filters: FilterCategoriesDto) {
     const { categories, total } = await this.service.findAll(filters);
@@ -90,7 +91,7 @@ export class CategoriesController {
   }
 
   @Patch(':id/soft-delete')
-  @ApiOperation({ summary: 'Soft delete a category by ID' })
+  @ApiOperation({ summary: 'Toggle soft delete status for a category (restores if deleted, deletes if active)' })
   async softDelete(@Param('id') id: string) {
     const result = await this.service.softDelete(id);
     return ResponseUtil.success(result, 'Category soft deleted successfully');

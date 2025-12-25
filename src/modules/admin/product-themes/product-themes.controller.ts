@@ -40,8 +40,10 @@ export class ProductThemesController {
   @Get()
   @ApiOperation({
     summary: 'Get all product themes with pagination, filtering, and sorting',
-    description: 'Search by name. Sort by createdAt (default), updatedAt, name. Default: 20 items per page, sorted by createdAt DESC',
+    description: 'Search by name. Use includeDeleted=true to show only soft-deleted items. Sort by createdAt (default), updatedAt, name. Default: 20 items per page, sorted by createdAt DESC',
   })
+  @ApiQuery({ name: 'includeDeleted', required: false, type: Boolean, description: 'Show only soft-deleted items (default: false - shows only active items)', example: false })
+  @ApiResponse({ status: 200, description: 'Product themes retrieved successfully' })
   async findAll(@Query() filters: FilterProductThemesDto) {
     const { themes, total } = await this.service.findAll(filters);
     return ResponseUtil.paginated(
@@ -88,7 +90,8 @@ export class ProductThemesController {
   }
 
   @Patch(':id/soft-delete')
-  @ApiOperation({ summary: 'Soft delete product theme by ID' })
+  @ApiOperation({ summary: 'Toggle soft delete status for a product theme (restores if deleted, deletes if active)' })
+  @ApiResponse({ status: 200, description: 'Product theme status toggled successfully' })
   async softDelete(@Param('id') id: string) {
     const result = await this.service.softDelete(id);
     return ResponseUtil.success(result, 'Product themes updated successfully');

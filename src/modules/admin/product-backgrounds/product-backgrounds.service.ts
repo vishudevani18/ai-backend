@@ -83,6 +83,7 @@ export class ProductBackgroundsService {
     productThemeId?: string;
     sortBy?: string;
     sortOrder?: 'ASC' | 'DESC';
+    includeDeleted?: boolean;
   }) {
     const {
       page = 1,
@@ -91,12 +92,18 @@ export class ProductBackgroundsService {
       productThemeId,
       sortBy = 'createdAt',
       sortOrder = 'DESC',
+      includeDeleted = false,
     } = filters;
 
     const qb = this.repo
       .createQueryBuilder('background')
-      .leftJoinAndSelect('background.productThemes', 'productTheme')
-      .where('background.deleted_at IS NULL');
+      .leftJoinAndSelect('background.productThemes', 'productTheme');
+
+    if (includeDeleted) {
+      qb.withDeleted().andWhere('background.deletedAt IS NOT NULL');
+    } else {
+      qb.where('background.deletedAt IS NULL');
+    }
 
     if (search) {
       qb.andWhere('background.name ILIKE :search', { search: `%${search}%` });
