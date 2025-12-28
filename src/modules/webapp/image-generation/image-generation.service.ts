@@ -14,7 +14,7 @@ import { GcsStorageService } from '../../../storage/services/gcs-storage.service
 import { GeminiImageService } from './services/gemini-image.service';
 import { ImageCleanupService } from './services/image-cleanup.service';
 import { GenerateImageDto } from './dto/generate-image.dto';
-import { ERROR_MESSAGES } from '../../../common/constants/image-generation.constants';
+import { ERROR_MESSAGES, DEFAULT_PROMPT_TEMPLATE, STATIC_POSE_DESCRIPTION } from '../../../common/constants/image-generation.constants';
 import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
@@ -58,19 +58,20 @@ export class ImageGenerationService {
       // Step 2: Fetch reference images from GCS and validate they exist
       const referenceImages = await this.fetchReferenceImages(dto);
 
-      // Step 3: Convert product image from base64 to buffer
-      const productImageBuffer = this.convertBase64ToBuffer(dto.productImage, dto.productImageMimeType);
+      // Step 3: Build prompt with pose description from database (falls back to static constant if not available)
+      const finalPrompt = this.buildPromptWithPose(referenceImages.poseDescription);
 
-      // Step 4: Prepare all images for Gemini (face, pose, background, product)
+      // Step 4: Prepare images for Gemini (face, background, product)
+      // Note: Pose is text-based from database description for consistency
+      // We still fetch pose image for API validation, but don't send it to Gemini
       const geminiImages = [
-        { data: referenceImages.aiFace, mimeType: 'image/jpeg' },
-        { data: referenceImages.productPose, mimeType: 'image/jpeg' },
-        { data: referenceImages.productBackground, mimeType: 'image/jpeg' },
-        { data: dto.productImage.split(',')[1] || dto.productImage, mimeType: dto.productImageMimeType },
+        { data: referenceImages.aiFace, mimeType: 'image/png' }, // Reference [1] = Face (PNG transparent)
+        { data: referenceImages.productBackground, mimeType: 'image/jpeg' }, // Reference [2] = Background
+        { data: dto.productImage.split(',')[1] || dto.productImage, mimeType: dto.productImageMimeType }, // Reference [3] = Product/Cloth
       ];
 
-      // Step 5: Generate composite image using Gemini
-      const generatedImageBuffer = await this.geminiImageService.generateCompositeImage(geminiImages);
+      // Step 5: Generate composite image using Gemini with built prompt
+      const generatedImageBuffer = await this.geminiImageService.generateCompositeImage(geminiImages, finalPrompt);
 
       // Step 6: Store generated image in GCS
       const { imageUrl, imagePath } = await this.storeGeneratedImage(generatedImageBuffer);
@@ -147,13 +148,15 @@ export class ImageGenerationService {
 
   /**
    * Fetch reference images from GCS and validate they exist
+   * Also fetches pose description from database (falls back to static constant if not available)
    */
   private async fetchReferenceImages(dto: GenerateImageDto): Promise<{
     aiFace: string;
     productPose: string;
     productBackground: string;
+    poseDescription: string;
   }> {
-    // Fetch entities to get image URLs/paths
+    // Fetch entities to get image URLs/paths and pose description
     const [productPose, productBackground, aiFace] = await Promise.all([
       this.productPoseRepo.findOne({ where: { id: dto.productPoseId } }),
       this.productBackgroundRepo.findOne({ where: { id: dto.productBackgroundId } }),
@@ -169,7 +172,6 @@ export class ImageGenerationService {
     if (!aiFace?.imageUrl && !aiFace?.imagePath) {
       throw new NotFoundException(`${ERROR_MESSAGES.MISSING_REFERENCE_IMAGE}: AI face image not available`);
     }
-
     // Download images from GCS and convert to base64
     const [poseBuffer, backgroundBuffer, faceBuffer] = await Promise.all([
       this.gcsStorageService.downloadFile(productPose.imagePath || productPose.imageUrl),
@@ -177,24 +179,22 @@ export class ImageGenerationService {
       this.gcsStorageService.downloadFile(aiFace.imagePath || aiFace.imageUrl),
     ]);
 
+    // Use pose description from database if available, otherwise use static constant
+    const poseDescription = productPose?.description?.trim() || STATIC_POSE_DESCRIPTION;
+
     return {
       aiFace: faceBuffer.toString('base64'),
       productPose: poseBuffer.toString('base64'),
       productBackground: backgroundBuffer.toString('base64'),
+      poseDescription,
     };
   }
 
   /**
-   * Convert base64 string to buffer
+   * Build prompt by replacing pose description placeholder with database value or static fallback
    */
-  private convertBase64ToBuffer(base64String: string, mimeType: string): Buffer {
-    try {
-      // Remove data URL prefix if present (e.g., "data:image/jpeg;base64,")
-      const base64Data = base64String.includes(',') ? base64String.split(',')[1] : base64String;
-      return Buffer.from(base64Data, 'base64');
-    } catch (error) {
-      throw new BadRequestException(ERROR_MESSAGES.INVALID_PRODUCT_IMAGE);
-    }
+  private buildPromptWithPose(poseDescription: string): string {
+    return DEFAULT_PROMPT_TEMPLATE.replace('{{POSE_DESCRIPTION}}', poseDescription);
   }
 
   /**

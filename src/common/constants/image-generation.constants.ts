@@ -3,6 +3,22 @@ export enum GenerationStatus {
   FAILED = 'failed',
 }
 
+export const STATIC_POSE_DESCRIPTION = `Standing in a relaxed fashion catalog pose.
+
+Weight shifted slightly onto one leg with a subtle contrapposto stance.
+
+Torso upright with a gentle natural curve.
+
+One arm relaxed down at the side.
+
+Other arm bent at the elbow with the hand resting lightly near the waist.
+
+Shoulders relaxed and slightly asymmetrical.
+
+Head gently tilted with a natural neutral posture.
+
+Overall pose is calm, balanced, and elegant.`;
+
 export const DEFAULT_PROMPT_TEMPLATE = `You are a professional fashion photographer and digital compositing artist.
 
 Generate one photorealistic fashion product image by strictly combining the references below, without interpretation.
@@ -11,51 +27,90 @@ Generate one photorealistic fashion product image by strictly combining the refe
 
 FACE — Reference [1]
 
-Reference [1] contains only the face
+Reference [1] contains a PNG transparent image with only the face (no background, no body)
 
-Apply the face exactly as-is to a REAL HUMAN model
+CRITICAL: Reference [1] is a transparent PNG face image. Extract and apply the face EXACTLY as-is to a REAL HUMAN model.
+
+Apply the face exactly as-is - do not recreate or regenerate. Reuse the same person from Reference [1].
 
 Identity must be identical: skin tone, bone structure, eyes, nose, lips, jaw, hair
+
+The face from [1] must be applied identically to the final image with 100% consistency
 
 No beautification, no stylization, no modification
 
 The model must be a real person with natural human skin and features, NOT a mannequin or dummy
 
-POSE — Reference [2]
+The generated image will have the SAME face as Reference [1] - identical across all generations
 
-Match the pose exactly
+POSE — Fashion Catalog Pose (Text Description)
 
-Identical head angle, shoulders, arms, hands, torso, legs, stance
+CRITICAL: The model MUST use this EXACT pose for consistency across all image generations. The pose must be IDENTICAL every time.
 
-Treat as a fixed skeleton
+Follow these pose instructions EXACTLY - do not deviate, modify, or interpret:
 
-CRITICAL: Reference [2] is ONLY for body position and pose. IGNORE any mannequin, dummy, or non-human appearance in [2].
+{{POSE_DESCRIPTION}}
 
-Extract ONLY the body position, angles, and pose structure. DO NOT copy the mannequin's white surface, faceless appearance, or any non-human features.
+CRITICAL REQUIREMENTS FOR POSE CONSISTENCY:
+- The pose described above must be matched EXACTLY - every single detail
+- Every body part position must be identical: head angle, shoulders, arms, hands, torso, legs, stance, weight distribution
+- The pose must be 100% consistent across ALL image generations
+- Do NOT deviate from the pose description above - treat it as a fixed, unchangeable template
+- Do NOT interpret or modify the pose - use it exactly as described
+- The same pose description must produce the IDENTICAL pose every time
+- Treat the pose as a fixed skeleton that never changes
 
-The final model must be a REAL HUMAN with natural skin, not a mannequin.
+This pose must be identical across all image generations for consistency.
 
-BACKGROUND — Reference [3]
+BACKGROUND — Reference [2]
 
-Use the background exactly as provided
+CRITICAL: Use the background from Reference [2] EXACTLY as provided
 
-Same colors, lighting, shadows, and composition
+The background must be IDENTICAL: same colors, lighting, shadows, composition, and all visual elements
 
-No changes
+The generated image will have the SAME background as Reference [2]
 
-PRODUCT — Reference [4]
+Replace the entire background with Reference [2] - do not modify, alter, or change anything
 
-Model must wear/display the product from [4]
+The background from [2] must be used completely, not just as inspiration
 
-Preserve exact color, texture, fit, drape, and details
+DO NOT use background from any other reference - ONLY use background from [2]
 
-Product must look naturally worn
+PRODUCT/CLOTH — Reference [3]
+
+CRITICAL: Reference [3] is ONLY for the clothing/garment itself. IGNORE any model, face, pose, or person in [3].
+
+The cloth image [3] may show a model wearing the clothes, but you must IGNORE that model completely.
+
+Extract ONLY the clothing/garment from [3]: the fabric, design, color, texture, style, and details
+
+The model in the generated image must wear/display ONLY the cloth/garment from Reference [3]
+
+Preserve exact color, texture, fit, drape, and details from [3]
+
+The cloth must look naturally worn and properly fitted on the model
+
+DO NOT copy the face, pose, or body from Reference [3] - use ONLY the clothing/garment
+
+DO NOT use any clothing from the pose description - only use the cloth from [3]
+
+The face and pose in [3] must be completely ignored - use face ONLY from [1] and pose from the text description above
+
+The background in [3] must be completely ignored - use background ONLY from [2]
 
 🔁 CONSISTENCY RULE
 
-Using the same references [1], [2], [3] must always produce identical face, pose, and background.
+CRITICAL: Using the same references [1] and [2] AND the same pose description must ALWAYS produce identical face, pose, and background.
 
-Only the product may change when [4] changes.
+The pose must be IDENTICAL across ALL generations when using the same pose description - no variations, no interpretations, no deviations.
+
+When the pose description is the same, the generated pose must be EXACTLY the same every single time.
+
+Only the product/cloth may change when [3] changes.
+
+Face consistency is the PRIMARY goal - the face from [1] must be 100% identical across all generations.
+
+Pose consistency is CRITICAL - the pose from the description must be 100% identical across all generations.
 
 🎨 STYLE
 
@@ -81,7 +136,17 @@ Apply beauty retouching or artistic effects
 
 Create a mannequin, dummy, or non-human model (the model must be a real human person)
 
-Copy the mannequin appearance from the pose reference [2] - use ONLY the body position/pose
+Recreate or regenerate the face - reuse the exact same person from Reference [1]
+
+Copy the face, pose, or model from Reference [3] - [3] is ONLY for the clothing/garment
+
+Use face or pose from Reference [3] - face comes ONLY from [1] and pose from the text description
+
+Use background from Reference [3] - background comes ONLY from [2]
+
+Interpret, modify, or deviate from the pose description - use it EXACTLY as written
+
+Create variations of the pose - the same description must produce the IDENTICAL pose every time
 
 ✅ OUTPUT
 
@@ -101,4 +166,3 @@ export const ERROR_MESSAGES = {
   GEMINI_RATE_LIMIT: 'Rate limit exceeded. Please try again in a moment.',
   STORAGE_ERROR: 'Failed to store generated image',
 } as const;
-

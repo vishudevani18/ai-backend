@@ -1,10 +1,7 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { VertexAI, GenerativeModel, Part } from '@google-cloud/vertexai';
-import {
-  DEFAULT_PROMPT_TEMPLATE,
-  ERROR_MESSAGES,
-} from '../../../../common/constants/image-generation.constants';
+import { ERROR_MESSAGES } from '../../../../common/constants/image-generation.constants';
 
 @Injectable()
 export class GeminiImageService {
@@ -39,21 +36,20 @@ export class GeminiImageService {
 
   /**
    * Generate a composite image using Vertex AI (Gemini via Vertex AI)
-   * @param referenceImages Array of base64 images in order: [face, pose, background, product]
-   * @param prompt Custom prompt (optional, uses default if not provided)
+   * @param referenceImages Array of base64 images in order: [face, background, product]
+   * @param prompt Prompt with pose description (required)
    * @returns Generated image as base64 buffer
    */
   async generateCompositeImage(
     referenceImages: Array<{ data: string; mimeType: string }>,
-    prompt?: string,
+    prompt: string,
   ): Promise<Buffer> {
     const startTime = Date.now();
-    const finalPrompt = prompt || DEFAULT_PROMPT_TEMPLATE;
 
     try {
       // Build the multimodal prompt parts
       const promptParts: Part[] = [
-        { text: finalPrompt },
+        { text: prompt },
         ...referenceImages.map(img => ({
           inlineData: {
             mimeType: img.mimeType,
