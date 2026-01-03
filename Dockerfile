@@ -39,9 +39,6 @@ RUN npm ci --omit=dev --ignore-scripts && npm cache clean --force
 # Copy built app
 COPY --from=builder /app/dist ./dist
 
-# Copy migration script (needed for Cloud Run Jobs)
-COPY --from=builder /app/scripts ./scripts
-
 # App directories
 RUN mkdir -p uploads/images \
  && chown -R nestjs:nodejs /app
