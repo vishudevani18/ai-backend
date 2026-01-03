@@ -15,8 +15,7 @@ export const AppDataSource = new DataSource({
   password: process.env.DB_PASSWORD || 'password',
   database: process.env.DB_DATABASE || 'ai_photo_studio_db',
   entities: [join(__dirname, '**', '*.entity.{js,ts}')],
-  migrations: [join(__dirname, 'migrations', '*.{js,ts}')],
-  synchronize: false,
+  synchronize: true, // Enabled for fresh database start - will be disabled when migrations are added
   logging: process.env.NODE_ENV === 'development',
   // ✅ IMPORTANT: Cloud SQL Unix socket does NOT use SSL
   // SSL is handled automatically by Cloud SQL Proxy for Unix socket connections

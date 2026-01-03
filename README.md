@@ -91,8 +91,8 @@ npm run start:dev
    # Create PostgreSQL database
    createdb saas_dev
    
-   # Run migrations (automatic on first start)
-   npm run migration:run
+   # Database schema is automatically synchronized from entities
+   # Tables will be created automatically on first start
    ```
 
 5. **Start the application**

@@ -56,7 +56,7 @@ You should see `roles/aiplatform.user` in the output.
 
 ## Why This Happened
 
-The `deploy.sh` script creates a custom service account (`saas-backend-sa`) for security, but it only grants Cloud SQL and Storage permissions. Vertex AI permissions need to be added separately.
+The deployment process creates a custom service account (`saas-backend-sa`) for security, but Vertex AI permissions need to be granted separately. The service account is created during initial GCP setup, and Vertex AI permissions should be added at that time.
 
-**Note**: The deploy script has been updated to automatically grant Vertex AI permissions in future deployments.
+**Note**: When setting up the service account initially, make sure to grant the `roles/aiplatform.user` role along with other required roles.
 

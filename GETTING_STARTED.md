@@ -56,11 +56,8 @@ DB_DATABASE=saas_dev
 ### 5. Run Database Migrations
 
 ```bash
-# Generate migration (if needed)
-npm run migration:generate -- src/database/migrations/InitialMigration
-
-# Run migrations
-npm run migration:run
+# Database schema is automatically synchronized from entities
+# No migrations needed for fresh database setup
 ```
 
 ### 6. Start the Application
@@ -108,9 +105,8 @@ npm run lint
 npm run build
 
 # Database operations
-npm run migration:generate -- src/database/migrations/MigrationName
-npm run migration:run
-npm run migration:revert
+# Schema is automatically synchronized from entities (synchronize: true)
+# Migrations can be added later when needed
 ```
 
 ## 📝 API Testing

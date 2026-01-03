@@ -1,199 +1,174 @@
 # Database Setup Guide
 
-This guide covers database setup, migrations, and automation for the GCP deployment.
+This guide covers database setup for the GCP Cloud SQL deployment.
 
-## 🎯 Quick Start
+## Overview
 
-### Automated Setup (Recommended)
+The application uses **Cloud SQL PostgreSQL** with automatic connection via Unix socket. Database migrations are handled automatically by TypeORM, and the super admin user is created on application startup.
 
-```bash
-# Complete database setup (create DB + run migrations)
-./setup-database.sh
+## Prerequisites
 
-# Or just run migrations (if DB already exists)
-./run-migrations.sh
-```
+- GCP project with Cloud SQL API enabled
+- Cloud SQL instance created
+- VPC connector configured (for Cloud Run connectivity)
 
-## 📋 Available Scripts
+## Initial Setup
 
-### 1. `setup-database.sh`
-Complete database setup including:
-- ✅ Check Cloud SQL instance
-- ✅ Create database (if not exists)
-- ✅ Verify database user
-- ✅ Run migrations
-
-**Usage:**
-```bash
-./setup-database.sh
-```
-
-### 2. `run-migrations.sh`
-Runs database migrations using Cloud Run Jobs:
-- ✅ Creates/updates Cloud Run migration job
-- ✅ Executes migrations
-- ✅ Shows status and logs
-
-**Usage:**
-```bash
-./run-migrations.sh
-```
-
-### 3. `setup-gcp.sh`
-Complete GCP setup automation:
-- ✅ Infrastructure setup
-- ✅ Application deployment
-- ✅ Database migrations
-- ✅ Verification
-
-**Usage:**
-```bash
-./setup-gcp.sh
-```
-
-## 🔧 Manual Migration Commands
-
-### Create Migration Job
+### 1. Create Cloud SQL Instance
 
 ```bash
-gcloud run jobs create migrate-db \
-  --image asia-south1-docker.pkg.dev/ai-photo-studio-18/backend-repo/saas-backend \
-  --region asia-south1 \
-  --service-account saas-backend-sa@ai-photo-studio-18.iam.gserviceaccount.com \
-  --set-cloudsql-instances ai-photo-studio-18:asia-south1:postgres-db \
-  --set-env-vars NODE_ENV=production,DB_HOST=/cloudsql/ai-photo-studio-18:asia-south1:postgres-db,DB_PORT=5432,DB_USERNAME=dbuser,DB_DATABASE=ai_photo_studio_db,GCP_PROJECT_ID=ai-photo-studio-18 \
-  --command npm \
-  --args run,migration:run \
-  --max-retries=1 \
-  --task-timeout=600
+gcloud sql instances create postgres-db \
+  --database-version=POSTGRES_15 \
+  --tier=db-g1-small \
+  --region=asia-south1 \
+  --network=default \
+  --no-assign-ip
 ```
 
-### Execute Migrations
+**Note**: `--no-assign-ip` creates a private IP-only instance (more secure).
+
+### 2. Create Database
 
 ```bash
-gcloud run jobs execute migrate-db --region asia-south1 --wait
+gcloud sql databases create ai_photo_studio_db --instance=postgres-db
 ```
 
-### View Migration Logs
+### 3. Create Database User
 
 ```bash
-gcloud logging read \
-  "resource.type=cloud_run_job AND resource.labels.job_name=migrate-db AND resource.labels.location=asia-south1" \
-  --limit=50 \
-  --format=json
+gcloud sql users create dbuser \
+  --instance=postgres-db \
+  --password=YOUR_SECURE_PASSWORD
 ```
 
-## 📊 Database Operations
+**Important**: Save the password securely. You'll need it for the `env` secret in Secret Manager.
+
+### 4. Configure VPC Connector
+
+The VPC connector allows Cloud Run to connect to the private Cloud SQL instance:
+
+```bash
+gcloud compute networks vpc-access connectors create vpc-connector \
+  --region=asia-south1 \
+  --subnet=default \
+  --min-instances=0 \
+  --max-instances=2 \
+  --machine-type=e2-micro
+```
+
+## Database Schema Management
+
+### Automatic Schema Synchronization
+
+The database schema is **automatically synchronized** from TypeORM entities using `synchronize: true` in development. This means:
+
+- Tables are automatically created/updated based on entity definitions
+- No manual migrations needed for now
+- Perfect for fresh database setup and development
+
+**Note**: When you're ready for production migrations, you can:
+1. Set `synchronize: false` in `database.module.ts`
+2. Generate migrations from your entities
+3. Run migrations manually or via Cloud Run Jobs
+
+## Super Admin Creation
+
+The super admin user is **automatically created** on application startup if it doesn't exist. The credentials are read from environment variables:
+
+- `SUPER_ADMIN_EMAIL`: Super admin email
+- `SUPER_ADMIN_PASSWORD`: Super admin password
+
+These should be included in your `env` secret in Secret Manager.
+
+## Connection Configuration
+
+The application connects to Cloud SQL using a Unix socket:
+
+```
+DB_HOST=/cloudsql/PROJECT_ID:REGION:INSTANCE_NAME
+```
+
+Example:
+```
+DB_HOST=/cloudsql/ai-photo-studio-18:asia-south1:postgres-db
+```
+
+This is configured automatically in the deployment script.
+
+## Environment Variables
+
+Add these to your `env` secret in Secret Manager:
+
+```json
+{
+  "DB_HOST": "/cloudsql/ai-photo-studio-18:asia-south1:postgres-db",
+  "DB_PORT": "5432",
+  "DB_USERNAME": "dbuser",
+  "DB_PASSWORD": "your-secure-password",
+  "DB_DATABASE": "ai_photo_studio_db"
+}
+```
+
+## Verification
 
 ### Check Database Connection
 
-```bash
-# Connect via Cloud SQL Proxy (local)
-gcloud sql connect postgres-db --user=dbuser --database=ai_photo_studio_db
-```
-
-### List Tables
-
-```sql
-\dt
-```
-
-### Check Migration Status
-
-The application tracks migrations in the `migrations` table. You can check:
-
-```sql
-SELECT * FROM migrations ORDER BY timestamp DESC;
-```
-
-## 🔄 Migration Workflow
-
-### 1. Generate New Migration (Local)
+After deployment, check the application logs:
 
 ```bash
-npm run migration:generate -- src/database/migrations/MigrationName
+gcloud logging read "resource.type=cloud_run_revision" \
+  --limit 50 \
+  --format json | grep -i "database\|connection"
 ```
 
-### 2. Review Migration File
+### Connect to Database (for debugging)
 
-Check the generated migration in `src/database/migrations/`
-
-### 3. Deploy Application
+Use Cloud SQL Proxy:
 
 ```bash
-./deploy.sh
+# Install Cloud SQL Proxy
+curl -o cloud-sql-proxy https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.8.0/cloud-sql-proxy.linux.amd64
+chmod +x cloud-sql-proxy
+
+# Connect
+./cloud-sql-proxy ai-photo-studio-18:asia-south1:postgres-db
+
+# In another terminal, connect with psql
+psql -h 127.0.0.1 -U dbuser -d ai_photo_studio_db
 ```
 
-### 4. Run Migrations
+## Troubleshooting
 
-```bash
-./run-migrations.sh
-```
+### Connection Refused
 
-## 🚨 Troubleshooting
+- Verify VPC connector is running: `gcloud compute networks vpc-access connectors describe vpc-connector --region=asia-south1`
+- Check Cloud Run service has VPC connector configured
+- Verify Cloud SQL instance has private IP enabled
 
-### Migration Fails
+### Authentication Failed
 
-1. **Check logs:**
-   ```bash
-   gcloud logging read \
-     "resource.type=cloud_run_job AND resource.labels.job_name=migrate-db" \
-     --limit=100
-   ```
+- Verify database user exists: `gcloud sql users list --instance=postgres-db`
+- Check password in Secret Manager matches database user password
+- Verify `DB_USERNAME` matches the actual database user
 
-2. **Common issues:**
-   - Missing environment variables in Secret Manager
-   - Database connection issues
-   - Migration conflicts
+### Database Not Found
 
-3. **Revert migration (if needed):**
-   ```bash
-   # Note: Revert must be done manually via SQL or local connection
-   ```
+- Verify database exists: `gcloud sql databases list --instance=postgres-db`
+- Check `DB_DATABASE` environment variable matches actual database name
 
-### Database Connection Issues
+## Security Best Practices
 
-1. **Verify Cloud SQL instance:**
-   ```bash
-   gcloud sql instances describe postgres-db
-   ```
+- ✅ Use private IP-only Cloud SQL instance
+- ✅ Use dedicated service account with least-privilege roles
+- ✅ Store credentials in Secret Manager (not in code)
+- ✅ Use strong passwords for database users
+- ✅ Enable SSL for external connections (not needed for Unix socket)
 
-2. **Check service account permissions:**
-   ```bash
-   gcloud projects get-iam-policy ai-photo-studio-18 \
-     --flatten="bindings[].members" \
-     --filter="bindings.members:serviceAccount:saas-backend-sa@ai-photo-studio-18.iam.gserviceaccount.com"
-   ```
+## Cost Optimization
 
-3. **Verify VPC connector:**
-   ```bash
-   gcloud compute networks vpc-access connectors describe vpc-connector --region=asia-south1
-   ```
+- Use `db-g1-small` tier for development/staging
+- Scale up only when needed for production
+- Use connection pooling (configured in `database.config.ts`)
+- Monitor connection usage to avoid hitting limits
 
-## 📝 Initial Data
-
-### Super Admin
-
-The super admin user is automatically created on application startup via the seed script:
-- Location: `src/database/seeds/create-super-admin.seed.ts`
-- Credentials: Set in Secret Manager `env` secret:
-  - `SUPER_ADMIN_EMAIL`
-  - `SUPER_ADMIN_PASSWORD`
-
-### Manual Seeding (if needed)
-
-You can add custom seed scripts in `src/database/seeds/` and call them from `main.ts` or create a separate Cloud Run job.
-
-## 🔐 Security Notes
-
-1. **Database credentials** are stored in Secret Manager `env` secret
-2. **No public IP** - Database is only accessible via VPC connector
-3. **Least privilege** - Service account has minimal required permissions
-4. **Migrations run in isolated job** - Separate from main application
-
-## 📚 Related Documentation
-
-- [DEPLOYMENT.md](./DEPLOYMENT.md) - Complete deployment guide
-- [ENV_VARIABLES_LIST.md](./ENV_VARIABLES_LIST.md) - Environment variables reference
-- [README.md](./README.md) - Project overview
-
+Estimated cost: ₹600-₹800/month for `db-g1-small` in India region

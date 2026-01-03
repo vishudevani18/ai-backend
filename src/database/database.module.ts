@@ -25,11 +25,11 @@ import { StorageModule } from '../storage/storage.module';
            */
           autoLoadEntities: true,
           /**
-           * ⚠️ IMPORTANT: synchronize should be FALSE when using migrations
-           * Migrations are the proper way to manage schema changes
-           * Set to true ONLY for initial development/testing without migrations
+           * ✅ synchronize is enabled for fresh database start
+           * TypeORM will automatically create/update tables based on entities
+           * Set to false when you're ready to use migrations
            */
-          synchronize: false,
+          synchronize: configService.get('app.nodeEnv') !== 'production',
           logging: configService.get('app.nodeEnv') === 'development',
           // ✅ IMPORTANT: Cloud SQL Unix socket does NOT use SSL
           ssl: false,

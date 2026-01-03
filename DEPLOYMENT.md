@@ -1,35 +1,50 @@
-## 🚀 Quick Start (Automated)
+# Deployment Guide
 
-**For complete automated setup, use:**
+## Overview
+
+This project uses **GitHub Actions** for automated CI/CD deployment to Google Cloud Run. The deployment process is fully automated and handles branch-based deployments with traffic splitting.
+
+## Deployment Architecture
+
+- **Single Cloud Run Service**: `saas-backend`
+- **Revision Tags**:
+  - `green-test` (preview, 0% traffic)
+  - `green-deploy` (canary, 10% traffic)
+  - `blue-prod` (production, 100% traffic)
+- **Secret Management**: Uses GCP Secret Manager (`test-env` for green-test, `env` for others)
+
+## Quick Start
+
+### Automated Deployment via GitHub Actions
+
+Deployments are automatically triggered when you push to specific branches:
+
+1. **Push to `green-test`** → Deploys with 0% traffic (preview)
+2. **Push to `green-deploy`** → Deploys with 10% canary traffic
+3. **Push to `blue-prod`** → Deploys with 100% production traffic
+
+### Manual Deployment (if needed)
+
+If you need to deploy manually, use the deployment script:
+
 ```bash
-./setup-gcp.sh
+cd deploy
+chmod +x deploy.sh
+./deploy.sh
 ```
 
-This interactive script will guide you through:
-1. Infrastructure setup (Cloud SQL, Storage, VPC, etc.)
-2. Application deployment
-3. Database migrations
-4. Verification
+Set the following environment variables:
+- `REVISION_TAG` (green-test, green-deploy, or blue-prod)
+- `SECRET_NAME` (test-env for green-test, env for others)
+- `DEPLOYMENT_REVISION` (same as REVISION_TAG)
+- `GCP_PROJECT_ID`, `GCP_REGION`, `SERVICE_NAME`, etc.
 
-**For database setup only:**
+## Prerequisites
+
+### GCP Setup
+
+1. **Enable Required APIs**:
 ```bash
-./setup-database.sh
-```
-
-**For migrations only:**
-```bash
-./run-migrations.sh
-```
-
----
-
-## 📋 Manual Setup Steps
-
-Step 1: Project & Region Setup
-gcloud config set project ai-photo-studio-18
-gcloud config set run/region asia-south1
-
-Step 2: Enable Required APIs
 gcloud services enable \
   run.googleapis.com \
   sqladmin.googleapis.com \
@@ -37,22 +52,18 @@ gcloud services enable \
   secretmanager.googleapis.com \
   vpcaccess.googleapis.com \
   cloudbuild.googleapis.com \
-  storage.googleapis.com
+  storage.googleapis.com \
+  aiplatform.googleapis.com
+```
 
-Step 3: Artifact Registry (Docker Images)
-
-Container Registry (gcr.io) is deprecated.
-Artifact Registry is required.
-
+2. **Create Artifact Registry**:
+```bash
 gcloud artifacts repositories create backend-repo \
   --repository-format=docker \
   --location=asia-south1
+```
 
-Step 4: Cloud SQL (PostgreSQL)
-
-**Note**: Your instance `postgres-db` already exists. Skip creation if already done.
-
-4.1 Create Instance (Private IP Only) - SKIP IF EXISTS
+3. **Create Cloud SQL Instance** (if not exists):
 ```bash
 gcloud sql instances create postgres-db \
   --database-version=POSTGRES_15 \
@@ -62,52 +73,15 @@ gcloud sql instances create postgres-db \
   --no-assign-ip
 ```
 
-💰 Cost: ~₹600–₹800/month
-
-db-g1-small is the cheapest reliable tier for production.
-
-4.2 Create Database & App User - SKIP IF EXISTS
-
-⚠️ Do NOT use postgres superuser in production
-
-**Your existing setup:**
-- Instance: `postgres-db`
-- Database: `ai_photo_studio_db` ✅
-- User: `dbuser` ✅
-
-If creating new:
+4. **Create Database and User**:
 ```bash
 gcloud sql databases create ai_photo_studio_db --instance=postgres-db
-
 gcloud sql users create dbuser \
   --instance=postgres-db \
-  --password=STRONG_DB_PASSWORD
+  --password=YOUR_SECURE_PASSWORD
 ```
 
-Save the password securely.
-
-Step 5: Cloud Storage (Private Bucket)
-
-**Note**: Your bucket `ai-photo-studio-18-app-storage` already exists. Skip if already done.
-
-```bash
-gsutil mb -p ai-photo-studio-18 -l asia-south1 gs://ai-photo-studio-18-app-storage
-```
-
-Storage Rules
-
-❌ Bucket is NOT public
-
-✅ Files accessed only via signed URLs
-
-❌ No CDN (unnecessary for MVP)
-
-Step 6: Serverless VPC Connector
-
-**Note**: Your VPC connector `vpc-connector` already exists in `asia-south1`. Skip if already done.
-
-Required for private Cloud SQL access.
-
+5. **Create VPC Connector**:
 ```bash
 gcloud compute networks vpc-access connectors create vpc-connector \
   --region=asia-south1 \
@@ -117,22 +91,12 @@ gcloud compute networks vpc-access connectors create vpc-connector \
   --machine-type=e2-micro
 ```
 
-💰 Cost: ~₹80–₹150/month
-
-Step 7: Dedicated Service Account (Security)
-
-**Note**: Service account will be created automatically by `deploy.sh` if it doesn't exist.
-
-Create a least-privilege service account for Cloud Run.
-
+6. **Create Service Account**:
 ```bash
 gcloud iam service-accounts create saas-backend-sa \
-  --display-name="SaaS Backend Service Account"
-```
+  --display-name="Cloud Run Backend Service Account"
 
-Grant required roles:
-
-```bash
+# Grant required roles
 gcloud projects add-iam-policy-binding ai-photo-studio-18 \
   --member="serviceAccount:saas-backend-sa@ai-photo-studio-18.iam.gserviceaccount.com" \
   --role="roles/cloudsql.client"
@@ -140,195 +104,126 @@ gcloud projects add-iam-policy-binding ai-photo-studio-18 \
 gcloud projects add-iam-policy-binding ai-photo-studio-18 \
   --member="serviceAccount:saas-backend-sa@ai-photo-studio-18.iam.gserviceaccount.com" \
   --role="roles/storage.objectAdmin"
+
+gcloud projects add-iam-policy-binding ai-photo-studio-18 \
+  --member="serviceAccount:saas-backend-sa@ai-photo-studio-18.iam.gserviceaccount.com" \
+  --role="roles/aiplatform.user"
 ```
 
-**Important**: Secret access is granted per-secret (more secure), not at project level.
+7. **Create Secrets in Secret Manager**:
+   - `env` secret: Production environment variables (JSON format)
+   - `test-env` secret: Test environment variables (JSON format)
 
-Step 8: Secret Manager - Single "env" Secret
-
-**New Approach**: All environment variables are stored in a single "env" secret as JSON.
-
-8.1 Create the "env" Secret
-
-Create a JSON file with all your environment variables. See `ENV_VARIABLES_LIST.md` for the complete list.
-
-Example `env.json`:
-```json
-{
-  "NODE_ENV": "production",
-  "PORT": "8080",
-  "DB_HOST": "/cloudsql/ai-photo-studio-18:asia-south1:postgres-db",
-  "DB_PORT": "5432",
-  "DB_USERNAME": "dbuser",
-  "DB_PASSWORD": "your-secure-db-password",
-  "DB_DATABASE": "ai_photo_studio_db",
-  "JWT_SECRET": "your-super-secure-jwt-secret-min-32-chars",
-  "JWT_REFRESH_SECRET": "your-super-secure-refresh-secret-min-32-chars",
-  "STORAGE_PROVIDER": "gcs",
-  "GCS_BUCKET_NAME": "ai-photo-studio-18-app-storage",
-  "GCS_PROJECT_ID": "ai-photo-studio-18",
-  "GEMINI_API_KEY": "your-gemini-api-key"
-}
-```
-
-Create the secret:
+   Grant access to service account:
 ```bash
-gcloud secrets create env --data-file=env.json
+gcloud secrets add-iam-policy-binding env \
+  --member="serviceAccount:saas-backend-sa@ai-photo-studio-18.iam.gserviceaccount.com" \
+  --role="roles/secretmanager.secretAccessor"
+
+gcloud secrets add-iam-policy-binding test-env \
+  --member="serviceAccount:saas-backend-sa@ai-photo-studio-18.iam.gserviceaccount.com" \
+  --role="roles/secretmanager.secretAccessor"
 ```
 
-8.2 Update the Secret (When Needed)
+## GitHub Actions Setup
 
-To update environment variables, create a new version:
+### Required Secrets
+
+Configure the following secrets in GitHub (Settings → Secrets and variables → Actions):
+
+- `GCP_PROJECT_ID`: Google Cloud project ID
+- `GCP_REGION`: Deployment region (e.g., `asia-south1`)
+- `ARTIFACT_REGISTRY_REPO`: Artifact Registry repo name (e.g., `backend-repo`)
+- `SERVICE_NAME`: Cloud Run service name (e.g., `saas-backend`)
+- `CLOUD_SQL_INSTANCE`: Cloud SQL instance connection string
+- `VPC_CONNECTOR`: VPC connector name (e.g., `vpc-connector`)
+- `GCS_BUCKET`: GCS bucket name
+- `GCP_SERVICE_ACCOUNT_KEY`: Base64-encoded service account JSON key
+
+### Authentication
+
+The workflow uses service account authentication. You can either:
+1. Use a service account key (stored in `GCP_SERVICE_ACCOUNT_KEY` secret)
+2. Use Workload Identity Federation (recommended for production)
+
+## Deployment Flow
+
+### 1. Green-Test (Preview)
+- Triggered by: Push to `green-test` branch
+- Traffic: 0% (preview only)
+- Secret: `test-env`
+- Purpose: QA and validation without affecting users
+
+### 2. Green-Deploy (Canary)
+- Triggered by: Push to `green-deploy` branch
+- Traffic: 10% (90% stays on blue-prod)
+- Secret: `env`
+- Purpose: Real user traffic testing with easy rollback
+
+### 3. Blue-Prod (Production)
+- Triggered by: Push to `blue-prod` branch
+- Traffic: 100%
+- Secret: `env`
+- Purpose: Full production rollout
+
+## Environment Variables
+
+All environment variables are loaded from GCP Secret Manager at runtime. The secrets should contain:
+
+- Database credentials (`DB_HOST`, `DB_USERNAME`, `DB_PASSWORD`, `DB_DATABASE`)
+- JWT secrets (`JWT_SECRET`, `JWT_REFRESH_SECRET`)
+- Storage configuration (`GCS_BUCKET_NAME`, `GCS_PROJECT_ID`)
+- API keys (`GEMINI_API_KEY`, etc.)
+- Other application configuration
+
+See `ENV_VARIABLES_LIST.md` for the complete list.
+
+## Verification
+
+After deployment, verify the service:
+
 ```bash
-# Edit your env.json file
-nano env.json
-
-# Add new version
-gcloud secrets versions add env --data-file=env.json
-```
-
-The application automatically fetches the latest version on startup.
-
-**Benefits**:
-- ✅ Single secret to manage
-- ✅ Easy to update (just add new version)
-- ✅ Version history for rollback
-- ✅ All variables in one place
-
-**Note**: The application fetches this secret at startup in production. No need to mount individual secrets.
-
-Step 9: Build Docker Image
-
-**Note**: This is handled automatically by `deploy.sh`. Manual build:
-
-```bash
-gcloud builds submit \
-  --tag asia-south1-docker.pkg.dev/ai-photo-studio-18/backend-repo/saas-backend \
-  --file Dockerfile.gcp
-```
-
-Step 10: Deploy to Cloud Run
-
-**Recommended**: Use `./deploy.sh` which handles everything automatically.
-
-**Auto-run migrations after deployment:**
-```bash
-AUTO_RUN_MIGRATIONS=true ./deploy.sh
-```
-
-Manual deployment:
-
-```bash
-gcloud run deploy saas-backend \
-  --image asia-south1-docker.pkg.dev/ai-photo-studio-18/backend-repo/saas-backend \
+# Get service URL
+SERVICE_URL=$(gcloud run services describe saas-backend \
   --region asia-south1 \
-  --service-account saas-backend-sa@ai-photo-studio-18.iam.gserviceaccount.com \
-  --allow-unauthenticated \
-  --memory 512Mi \
-  --cpu 1 \
-  --concurrency 80 \
-  --min-instances 0 \
-  --max-instances 10 \
-  --timeout 300 \
-  --port 8080 \
-  --vpc-connector vpc-connector \
-  --vpc-egress private-ranges-only \
-  --add-cloudsql-instances ai-photo-studio-18:asia-south1:postgres-db \
-  --set-env-vars NODE_ENV=production,DB_HOST=/cloudsql/ai-photo-studio-18:asia-south1:postgres-db,DB_PORT=5432,DB_USERNAME=dbuser,DB_DATABASE=ai_photo_studio_db,STORAGE_PROVIDER=gcs,GCS_BUCKET_NAME=ai-photo-studio-18-app-storage,GCS_PROJECT_ID=ai-photo-studio-18,GCP_PROJECT_ID=ai-photo-studio-18
+  --format="value(status.url)")
+
+# Test health endpoint
+curl ${SERVICE_URL}/api/v1/health
+
+# Check Swagger docs
+open ${SERVICE_URL}/api/v1/docs
 ```
 
-Step 11: Run Database Migrations
+## Troubleshooting
 
-**Recommended**: Use the automated script:
+### Service won't start
+- Check Cloud Run logs: `gcloud logging read "resource.type=cloud_run_revision" --limit 50`
+- Verify secrets are accessible: Check IAM permissions on secrets
+- Verify database connectivity: Check Cloud SQL instance and VPC connector
 
-```bash
-./run-migrations.sh
-```
+### Database connection errors
+- Verify `DB_HOST` uses Unix socket format: `/cloudsql/PROJECT:REGION:INSTANCE`
+- Check VPC connector is working
+- Verify service account has `roles/cloudsql.client` role
 
-This script will:
-- Create/update the Cloud Run migration job
-- Execute migrations automatically
-- Show migration status and logs
+### Secret loading errors
+- Verify secret exists: `gcloud secrets list`
+- Check service account has `roles/secretmanager.secretAccessor` on the secret
+- Verify `SECRET_NAME` environment variable is set correctly
 
-**Manual Method** (if needed):
+## Security Notes
 
-Create Migration Job:
-```bash
-gcloud run jobs create migrate-db \
-  --image asia-south1-docker.pkg.dev/ai-photo-studio-18/backend-repo/saas-backend \
-  --region asia-south1 \
-  --service-account saas-backend-sa@ai-photo-studio-18.iam.gserviceaccount.com \
-  --set-cloudsql-instances ai-photo-studio-18:asia-south1:postgres-db \
-  --set-env-vars NODE_ENV=production,DB_HOST=/cloudsql/ai-photo-studio-18:asia-south1:postgres-db,DB_PORT=5432,DB_USERNAME=dbuser,DB_DATABASE=ai_photo_studio_db \
-  --set-env-vars GCP_PROJECT_ID=ai-photo-studio-18 \
-  --command npm \
-  --args run,migration:run
-```
+- ✅ All secrets are loaded at runtime from Secret Manager (never in Docker image)
+- ✅ Service account uses least-privilege IAM roles
+- ✅ No secrets in GitHub Actions logs
+- ✅ Traffic splitting allows safe rollback
 
-Execute:
-```bash
-gcloud run jobs execute migrate-db --region asia-south1
-```
+## Cost Optimization
 
-Step 12: Verify Deployment
-gcloud run services describe saas-backend \
-  --region asia-south1 \
-  --format='value(status.url)'
+- Cloud Run scales to zero when not in use
+- Minimum instances set to 0 for cost savings
+- Database uses `db-g1-small` tier
+- VPC connector uses `e2-micro` with min-instances=0
 
-
-Test health endpoint:
-
-curl https://YOUR_SERVICE_URL/api/v1/health
-
-Redis (❌ Deferred)
-
-Redis is NOT enabled initially because:
-
-Minimum cost: ~₹2,500/month
-
-MVP does not need it
-
-OTP can be handled via DB with TTL
-
-👉 Add Redis only when traffic grows
-
-Monthly Cost (India – Estimated)
-Service	Cost
-Cloud Run	₹0 – ₹800
-Cloud SQL	₹600 – ₹800
-Cloud Storage	₹50 – ₹200
-VPC Connector	₹80 – ₹150
-Total	₹900 – ₹2,000 / month
-Security Checklist (Applied)
-
-✅ Private Cloud SQL (no public IP)
-
-✅ Dedicated service account
-
-✅ Secrets in Secret Manager
-
-✅ Private GCS bucket
-
-✅ Signed URLs only
-
-✅ Scale-to-zero enabled
-
-Next Steps (Optional)
-
-Custom domain mapping
-
-CI/CD with Cloud Build
-
-Redis (later)
-
-Monitoring & alerts
-
-Final Notes
-
-This setup is production-safe
-
-Scales automatically
-
-Extremely cost-efficient
-
-Ideal for first GCP deployment
+Estimated monthly cost: ₹900-₹2,000 (India region)
