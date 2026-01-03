@@ -1,21 +1,28 @@
 import { SecretManagerServiceClient } from '@google-cloud/secret-manager';
 
 /**
- * Fetches the "env" secret from GCP Secret Manager and loads all environment variables
+ * Fetches environment variables from GCP Secret Manager and loads them
  * This should be called before NestJS ConfigModule initializes in production
  *
+ * Secret name is determined by:
+ * 1. SECRET_NAME environment variable (set at Cloud Run deployment time)
+ * 2. Defaults to "env" if not set
+ *
  * @param projectId - GCP Project ID (defaults to process.env.GCP_PROJECT_ID or auto-detected)
- * @param secretName - Secret name (defaults to "env")
+ * @param secretName - Secret name (defaults to process.env.SECRET_NAME or "env")
  * @returns Promise<void>
  */
 export async function loadEnvFromSecretManager(
   projectId?: string,
-  secretName: string = 'env',
+  secretName?: string,
 ): Promise<void> {
   // Only run in production
   if (process.env.NODE_ENV !== 'production') {
     return;
   }
+
+  // Determine secret name: use parameter, then SECRET_NAME env var, then default to "env"
+  const finalSecretName = secretName || process.env.SECRET_NAME || 'env';
 
   try {
     // Initialize Secret Manager client
@@ -47,7 +54,7 @@ export async function loadEnvFromSecretManager(
     }
 
     // Construct the secret name
-    const secretPath = `projects/${projectId}/secrets/${secretName}/versions/latest`;
+    const secretPath = `projects/${projectId}/secrets/${finalSecretName}/versions/latest`;
 
     // Access the secret version
     let version;
@@ -58,7 +65,7 @@ export async function loadEnvFromSecretManager(
     } catch (apiError: unknown) {
       const error = apiError as Error & { code?: string };
       throw new Error(
-        `Failed to access secret "${secretName}": ${error?.message || 'Unknown error'}. Check IAM permissions for service account.`,
+        `Failed to access secret "${finalSecretName}": ${error?.message || 'Unknown error'}. Check IAM permissions for service account.`,
       );
     }
 

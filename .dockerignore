@@ -15,3 +15,10 @@ test
 logs
 uploads
 test-uploads
+gcs-service-account.json
+*.pem
+*.key
+# Exclude sensitive JSON files but keep package.json, tsconfig.json, nest-cli.json
+*-service-account.json
+*credentials*.json
+*secret*.json

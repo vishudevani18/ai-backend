@@ -166,6 +166,14 @@ async function bootstrap() {
 
   const baseUrl = process.env.BASE_URL || `http://localhost:${port}`;
 
+  // Log deployment revision for observability
+  const deploymentRevision = process.env.DEPLOYMENT_REVISION || 'local';
+  const secretName = process.env.SECRET_NAME || 'env';
+  console.log(`[DEPLOYMENT] Revision: ${deploymentRevision}`);
+  if (process.env.NODE_ENV === 'production') {
+    console.log(`[DEPLOYMENT] Secret: ${secretName}`);
+  }
+
   console.log(`🚀 Application is running on: ${baseUrl}`);
   console.log(`📚 Swagger documentation: ${baseUrl}/${API_PREFIX}/docs`);
   console.log(`🏥 Health check: ${baseUrl}/${API_PREFIX}/${ROUTES.HEALTH.BASE}`);
