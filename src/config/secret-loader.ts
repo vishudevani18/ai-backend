@@ -17,6 +17,8 @@ export async function loadEnvFromSecretManager(
   secretName?: string,
 ): Promise<void> {
   // Only run in production
+  // Note: All Cloud Run deployments (green-test, green-deploy, blue-prod) use NODE_ENV=production
+  // The distinction between test/prod is made via SECRET_NAME (test-env vs env)
   if (process.env.NODE_ENV !== 'production') {
     return;
   }
