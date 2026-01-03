@@ -24,6 +24,15 @@ export class GeneratedImagesStatsDto {
 
   @ApiProperty({ description: 'Total generations in last 30 days' })
   last30Days: number;
+
+  @ApiProperty({ description: 'Total number of bulk generation operations' })
+  bulkGenerations: number;
+
+  @ApiProperty({ description: 'Total number of images generated via bulk operations' })
+  bulkImagesGenerated: number;
+
+  @ApiProperty({ description: 'Bulk generation success rate percentage (0-100)' })
+  bulkSuccessRate: number;
 }
 
 export class TopItemDto {

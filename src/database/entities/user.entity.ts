@@ -59,17 +59,29 @@ export class User extends BaseEntity {
 
   @Column({ name: 'last_login', type: 'timestamp with time zone', nullable: true })
   lastLogin?: Date;
+
   // Stored hashed — for security
-  @Column({ type: 'varchar', length: 255, nullable: true, select: false })
+  @Column({ name: 'refresh_token', type: 'text', nullable: true, select: false })
   refreshToken?: string;
 
-  @Column({ type: 'timestamp', nullable: true, select: false })
+  @Column({
+    name: 'refresh_token_expires',
+    type: 'timestamp with time zone',
+    nullable: true,
+    select: false,
+  })
   refreshTokenExpires?: Date;
 
-  @Column({ type: 'varchar', length: 255, nullable: true, select: false })
+  @Column({
+    name: 'password_reset_token',
+    type: 'varchar',
+    length: 255,
+    nullable: true,
+    select: false,
+  })
   passwordResetToken?: string;
 
-  @Column({ type: 'timestamp', nullable: true, select: false })
+  @Column({ name: 'password_reset_expires', type: 'timestamp', nullable: true, select: false })
   passwordResetExpires?: Date;
 
   @OneToMany(() => UserAddress, address => address.user, { cascade: true })

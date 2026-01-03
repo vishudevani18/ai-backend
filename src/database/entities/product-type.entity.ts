@@ -1,4 +1,4 @@
-import { Entity, Column, ManyToOne, ManyToMany, OneToMany, Index } from 'typeorm';
+import { Entity, Column, ManyToOne, ManyToMany, OneToMany, Index, JoinColumn } from 'typeorm';
 import { Category } from './category.entity';
 import { ProductTheme } from './product-theme.entity';
 import { BaseEntity } from './base.entity';
@@ -14,9 +14,10 @@ export class ProductType extends BaseEntity {
   description?: string;
 
   @ManyToOne(() => Category, category => category.productTypes, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'category_id' })
   category: Category;
 
-  @Column({ name: 'category_id' })
+  @Column({ name: 'category_id', type: 'uuid', nullable: false })
   categoryId: string;
 
   @ManyToMany(() => ProductTheme, pt => pt.productTypes)

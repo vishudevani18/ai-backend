@@ -62,7 +62,8 @@ gcloud services enable \
     secretmanager.googleapis.com \
     vpcaccess.googleapis.com \
     cloudbuild.googleapis.com \
-    storage.googleapis.com
+    storage.googleapis.com \
+    aiplatform.googleapis.com
 
 # ======================
 # Docker Auth
@@ -107,6 +108,11 @@ if ! gcloud iam service-accounts describe "${SERVICE_ACCOUNT}" &>/dev/null; then
     gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
         --member="serviceAccount:${SERVICE_ACCOUNT}" \
         --role="roles/storage.objectAdmin"
+
+    # Grant Vertex AI permissions for image generation
+    gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
+        --member="serviceAccount:${SERVICE_ACCOUNT}" \
+        --role="roles/aiplatform.user"
 
     # Grant access to the single "env" secret
     if gcloud secrets describe "env" &>/dev/null; then

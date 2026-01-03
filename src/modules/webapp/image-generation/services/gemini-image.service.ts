@@ -86,8 +86,11 @@ export class GeminiImageService {
     } catch (error) {
       this.logger.error(`Generation Failed: ${error.message}`, error.stack);
 
-      if (error.message.includes('PERMISSION_DENIED')) {
-        throw new BadRequestException(error);
+      if (error.message.includes('PERMISSION_DENIED') || error.message.includes('403')) {
+        const errorMessage = error.message.includes('aiplatform.endpoints.predict')
+          ? 'Vertex AI permission denied. The service account needs the "Vertex AI User" role (roles/aiplatform.user) or "AI Platform Developer" role (roles/ml.developer). Please grant this permission in GCP IAM.'
+          : error.message;
+        throw new BadRequestException(errorMessage);
       }
 
       // Handle rate limit errors

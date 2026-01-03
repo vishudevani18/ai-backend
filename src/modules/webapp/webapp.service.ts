@@ -162,4 +162,29 @@ export class WebAppService {
         })),
     }));
   }
+
+  /**
+   * Get system data counts for dashboard
+   * Returns counts of AI Faces, Backgrounds, Poses, Categories, Industries, and Themes
+   * Excludes soft-deleted records
+   */
+  async getSystemData() {
+    const [aiFaces, backgrounds, poses, categories, industries, themes] = await Promise.all([
+      this.aiFaceRepo.count({ where: { deletedAt: null } }),
+      this.productBackgroundRepo.count({ where: { deletedAt: null } }),
+      this.productPoseRepo.count({ where: { deletedAt: null } }),
+      this.categoryRepo.count({ where: { deletedAt: null } }),
+      this.industryRepo.count({ where: { deletedAt: null } }),
+      this.productThemeRepo.count({ where: { deletedAt: null } }),
+    ]);
+
+    return {
+      aiFaces,
+      backgrounds,
+      poses,
+      categories,
+      industries,
+      themes,
+    };
+  }
 }

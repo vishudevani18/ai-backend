@@ -9,12 +9,21 @@ import { ProductPose } from '../../../database/entities/product-pose.entity';
 import { ProductTheme } from '../../../database/entities/product-theme.entity';
 import { ProductBackground } from '../../../database/entities/product-background.entity';
 import { AiFace } from '../../../database/entities/ai-face.entity';
-import { GeneratedImage, GenerationStatus } from '../../../database/entities/generated-image.entity';
+import {
+  GeneratedImage,
+  GenerationStatus,
+  GenerationType,
+} from '../../../database/entities/generated-image.entity';
 import { GcsStorageService } from '../../../storage/services/gcs-storage.service';
 import { GeminiImageService } from './services/gemini-image.service';
 import { ImageCleanupService } from './services/image-cleanup.service';
 import { GenerateImageDto } from './dto/generate-image.dto';
-import { ERROR_MESSAGES, DEFAULT_PROMPT_TEMPLATE, STATIC_POSE_DESCRIPTION } from '../../../common/constants/image-generation.constants';
+import { GenerateBulkImageDto } from './dto/generate-bulk-image.dto';
+import {
+  ERROR_MESSAGES,
+  DEFAULT_PROMPT_TEMPLATE,
+  STATIC_POSE_DESCRIPTION,
+} from '../../../common/constants/image-generation.constants';
 import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
@@ -67,17 +76,24 @@ export class ImageGenerationService {
       const geminiImages = [
         { data: referenceImages.aiFace, mimeType: 'image/png' }, // Reference [1] = Face (PNG transparent)
         { data: referenceImages.productBackground, mimeType: 'image/jpeg' }, // Reference [2] = Background
-        { data: dto.productImage.split(',')[1] || dto.productImage, mimeType: dto.productImageMimeType }, // Reference [3] = Product/Cloth
+        {
+          data: dto.productImage.split(',')[1] || dto.productImage,
+          mimeType: dto.productImageMimeType,
+        }, // Reference [3] = Product/Cloth
       ];
 
       // Step 5: Generate composite image using Gemini with built prompt
-      const generatedImageBuffer = await this.geminiImageService.generateCompositeImage(geminiImages, finalPrompt);
+      const generatedImageBuffer = await this.geminiImageService.generateCompositeImage(
+        geminiImages,
+        finalPrompt,
+      );
 
       // Step 6: Store generated image in GCS
       const { imageUrl, imagePath } = await this.storeGeneratedImage(generatedImageBuffer);
 
       // Step 7: Calculate expiresAt
-      const retentionHours = this.configService.get<number>('app.gemini.imageGeneration.imageRetentionHours') || 6;
+      const retentionHours =
+        this.configService.get<number>('app.gemini.imageGeneration.imageRetentionHours') || 6;
       const expiresAt = new Date();
       expiresAt.setHours(expiresAt.getHours() + retentionHours);
 
@@ -90,6 +106,7 @@ export class ImageGenerationService {
         generationStatus: GenerationStatus.SUCCESS,
         generationTimeMs,
         expiresAt,
+        generationType: GenerationType.SINGLE,
       });
 
       // Step 9: Schedule GCS deletion (database entry remains)
@@ -111,9 +128,13 @@ export class ImageGenerationService {
         errorMessage,
         generationTimeMs,
         expiresAt: null,
+        generationType: GenerationType.SINGLE,
       });
 
-      this.logger.error(`Image generation failed after ${generationTimeMs}ms: ${errorMessage}`, error);
+      this.logger.error(
+        `Image generation failed after ${generationTimeMs}ms: ${errorMessage}`,
+        error,
+      );
 
       // Re-throw the error
       if (error instanceof NotFoundException || error instanceof BadRequestException) {
@@ -127,15 +148,16 @@ export class ImageGenerationService {
    * Validate all IDs exist in database and are not soft-deleted
    */
   private async validateRequest(dto: GenerateImageDto): Promise<void> {
-    const [industry, category, productType, productPose, productTheme, productBackground, aiFace] = await Promise.all([
-      this.industryRepo.findOne({ where: { id: dto.industryId } }),
-      this.categoryRepo.findOne({ where: { id: dto.categoryId } }),
-      this.productTypeRepo.findOne({ where: { id: dto.productTypeId } }),
-      this.productPoseRepo.findOne({ where: { id: dto.productPoseId } }),
-      this.productThemeRepo.findOne({ where: { id: dto.productThemeId } }),
-      this.productBackgroundRepo.findOne({ where: { id: dto.productBackgroundId } }),
-      this.aiFaceRepo.findOne({ where: { id: dto.aiFaceId } }),
-    ]);
+    const [industry, category, productType, productPose, productTheme, productBackground, aiFace] =
+      await Promise.all([
+        this.industryRepo.findOne({ where: { id: dto.industryId } }),
+        this.categoryRepo.findOne({ where: { id: dto.categoryId } }),
+        this.productTypeRepo.findOne({ where: { id: dto.productTypeId } }),
+        this.productPoseRepo.findOne({ where: { id: dto.productPoseId } }),
+        this.productThemeRepo.findOne({ where: { id: dto.productThemeId } }),
+        this.productBackgroundRepo.findOne({ where: { id: dto.productBackgroundId } }),
+        this.aiFaceRepo.findOne({ where: { id: dto.aiFaceId } }),
+      ]);
 
     if (!industry) throw new NotFoundException(ERROR_MESSAGES.MISSING_INDUSTRY);
     if (!category) throw new NotFoundException(ERROR_MESSAGES.MISSING_CATEGORY);
@@ -164,18 +186,26 @@ export class ImageGenerationService {
     ]);
 
     if (!productPose?.imageUrl && !productPose?.imagePath) {
-      throw new NotFoundException(`${ERROR_MESSAGES.MISSING_REFERENCE_IMAGE}: Product pose image not available`);
+      throw new NotFoundException(
+        `${ERROR_MESSAGES.MISSING_REFERENCE_IMAGE}: Product pose image not available`,
+      );
     }
     if (!productBackground?.imageUrl && !productBackground?.imagePath) {
-      throw new NotFoundException(`${ERROR_MESSAGES.MISSING_REFERENCE_IMAGE}: Product background image not available`);
+      throw new NotFoundException(
+        `${ERROR_MESSAGES.MISSING_REFERENCE_IMAGE}: Product background image not available`,
+      );
     }
     if (!aiFace?.imageUrl && !aiFace?.imagePath) {
-      throw new NotFoundException(`${ERROR_MESSAGES.MISSING_REFERENCE_IMAGE}: AI face image not available`);
+      throw new NotFoundException(
+        `${ERROR_MESSAGES.MISSING_REFERENCE_IMAGE}: AI face image not available`,
+      );
     }
     // Download images from GCS and convert to base64
     const [poseBuffer, backgroundBuffer, faceBuffer] = await Promise.all([
       this.gcsStorageService.downloadFile(productPose.imagePath || productPose.imageUrl),
-      this.gcsStorageService.downloadFile(productBackground.imagePath || productBackground.imageUrl),
+      this.gcsStorageService.downloadFile(
+        productBackground.imagePath || productBackground.imageUrl,
+      ),
       this.gcsStorageService.downloadFile(aiFace.imagePath || aiFace.imageUrl),
     ]);
 
@@ -200,19 +230,268 @@ export class ImageGenerationService {
   /**
    * Store generated image in GCS with public access
    */
-  private async storeGeneratedImage(buffer: Buffer): Promise<{ imageUrl: string; imagePath: string }> {
+  private async storeGeneratedImage(
+    buffer: Buffer,
+  ): Promise<{ imageUrl: string; imagePath: string }> {
     try {
       const timestamp = Date.now();
       const uuid = uuidv4();
       const imagePath = `generated-images/${timestamp}-${uuid}/image.jpg`;
 
-      const imageUrl = await this.gcsStorageService.uploadPublicFile(buffer, imagePath, 'image/jpeg');
+      const imageUrl = await this.gcsStorageService.uploadPublicFile(
+        buffer,
+        imagePath,
+        'image/jpeg',
+      );
 
       return { imageUrl, imagePath };
     } catch (error) {
       this.logger.error('Failed to store generated image', error);
       throw new BadRequestException(ERROR_MESSAGES.STORAGE_ERROR);
     }
+  }
+
+  /**
+   * Bulk generation method to generate multiple images based on multiple pose IDs
+   */
+  async generateBulkImage(
+    dto: GenerateBulkImageDto,
+    userId?: string,
+  ): Promise<Array<{ imageUrl: string; poseId: string; expiresAt: Date }>> {
+    const startTime = Date.now();
+    const { productPoseIds } = dto;
+
+    // Validate unique pose IDs
+    const uniquePoseIds = [...new Set(productPoseIds)];
+    if (uniquePoseIds.length !== productPoseIds.length) {
+      throw new BadRequestException('Duplicate pose IDs are not allowed');
+    }
+
+    try {
+      // Step 1: Validate all shared IDs exist (industry, category, productType, theme, background, aiFace)
+      await this.validateBulkRequest(dto);
+
+      // Step 2: Validate all pose IDs exist
+      await this.validatePoseIds(productPoseIds);
+
+      // Step 3: Fetch shared reference images once (face, background, product)
+      const sharedReferences = await this.fetchSharedReferences(dto);
+
+      // Step 4: Fetch all pose descriptions in parallel
+      const poseDescriptions = await this.fetchPoseDescriptions(productPoseIds);
+
+      // Step 5: Prepare shared images for Gemini (face, background, product)
+      const geminiImages = [
+        { data: sharedReferences.aiFace, mimeType: 'image/png' }, // Reference [1] = Face (PNG transparent)
+        { data: sharedReferences.productBackground, mimeType: 'image/jpeg' }, // Reference [2] = Background
+        {
+          data: dto.productImage.split(',')[1] || dto.productImage,
+          mimeType: dto.productImageMimeType,
+        }, // Reference [3] = Product/Cloth
+      ];
+
+      // Step 6: Generate all images in parallel
+      const generationPromises = productPoseIds.map(async poseId => {
+        const poseStartTime = Date.now();
+        try {
+          const poseDescription = poseDescriptions[poseId] || STATIC_POSE_DESCRIPTION;
+          const finalPrompt = this.buildPromptWithPose(poseDescription);
+
+          // Generate image
+          const generatedImageBuffer = await this.geminiImageService.generateCompositeImage(
+            geminiImages,
+            finalPrompt,
+          );
+
+          // Store image in GCS
+          const { imageUrl, imagePath } = await this.storeGeneratedImage(generatedImageBuffer);
+
+          // Calculate expiresAt
+          const retentionHours =
+            this.configService.get<number>('app.gemini.imageGeneration.imageRetentionHours') || 6;
+          const expiresAt = new Date();
+          expiresAt.setHours(expiresAt.getHours() + retentionHours);
+
+          // Log generation to database
+          const generationTimeMs = Date.now() - poseStartTime;
+          const generatedImageRecord = await this.logGeneration({
+            industryId: dto.industryId,
+            categoryId: dto.categoryId,
+            productTypeId: dto.productTypeId,
+            productPoseId: poseId,
+            productThemeId: dto.productThemeId,
+            productBackgroundId: dto.productBackgroundId,
+            aiFaceId: dto.aiFaceId,
+            imageUrl,
+            imagePath,
+            generationStatus: GenerationStatus.SUCCESS,
+            generationTimeMs,
+            expiresAt,
+            generationType: GenerationType.BULK,
+            userId,
+          });
+
+          // Schedule GCS deletion
+          await this.imageCleanupService.scheduleDeletion(imagePath, generatedImageRecord.id);
+
+          return { imageUrl, poseId, expiresAt, success: true };
+        } catch (error) {
+          const generationTimeMs = Date.now() - poseStartTime;
+          const errorMessage = error instanceof Error ? error.message : String(error);
+
+          // Log failed generation to database
+          await this.logGeneration({
+            industryId: dto.industryId,
+            categoryId: dto.categoryId,
+            productTypeId: dto.productTypeId,
+            productPoseId: poseId,
+            productThemeId: dto.productThemeId,
+            productBackgroundId: dto.productBackgroundId,
+            aiFaceId: dto.aiFaceId,
+            imageUrl: null,
+            imagePath: null,
+            generationStatus: GenerationStatus.FAILED,
+            errorMessage,
+            generationTimeMs,
+            expiresAt: null,
+            generationType: GenerationType.BULK,
+            userId,
+          });
+
+          this.logger.error(
+            `Bulk generation failed for pose ${poseId} after ${generationTimeMs}ms: ${errorMessage}`,
+            error,
+          );
+          return { imageUrl: null, poseId, expiresAt: null, success: false, error: errorMessage };
+        }
+      });
+
+      const results = await Promise.all(generationPromises);
+
+      // Filter out failed generations and return only successful ones
+      const successfulResults = results.filter(r => r.success && r.imageUrl) as Array<{
+        imageUrl: string;
+        poseId: string;
+        expiresAt: Date;
+      }>;
+
+      const totalTimeMs = Date.now() - startTime;
+      this.logger.log(
+        `Bulk image generation completed: ${successfulResults.length}/${productPoseIds.length} successful in ${totalTimeMs}ms`,
+      );
+
+      if (successfulResults.length === 0) {
+        throw new BadRequestException(
+          'All image generations failed. Please check your inputs and try again.',
+        );
+      }
+
+      return successfulResults;
+    } catch (error) {
+      const totalTimeMs = Date.now() - startTime;
+      this.logger.error(`Bulk image generation failed after ${totalTimeMs}ms: ${error}`, error);
+
+      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new BadRequestException(
+        `${ERROR_MESSAGES.GEMINI_API_ERROR}: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
+
+  /**
+   * Validate shared IDs for bulk generation (industry, category, productType, theme, background, aiFace)
+   */
+  private async validateBulkRequest(dto: GenerateBulkImageDto): Promise<void> {
+    const [industry, category, productType, productTheme, productBackground, aiFace] =
+      await Promise.all([
+        this.industryRepo.findOne({ where: { id: dto.industryId } }),
+        this.categoryRepo.findOne({ where: { id: dto.categoryId } }),
+        this.productTypeRepo.findOne({ where: { id: dto.productTypeId } }),
+        this.productThemeRepo.findOne({ where: { id: dto.productThemeId } }),
+        this.productBackgroundRepo.findOne({ where: { id: dto.productBackgroundId } }),
+        this.aiFaceRepo.findOne({ where: { id: dto.aiFaceId } }),
+      ]);
+
+    if (!industry) throw new NotFoundException(ERROR_MESSAGES.MISSING_INDUSTRY);
+    if (!category) throw new NotFoundException(ERROR_MESSAGES.MISSING_CATEGORY);
+    if (!productType) throw new NotFoundException(ERROR_MESSAGES.MISSING_PRODUCT_TYPE);
+    if (!productTheme) throw new NotFoundException(ERROR_MESSAGES.MISSING_PRODUCT_THEME);
+    if (!productBackground) throw new NotFoundException(ERROR_MESSAGES.MISSING_PRODUCT_BACKGROUND);
+    if (!aiFace) throw new NotFoundException(ERROR_MESSAGES.MISSING_AI_FACE);
+  }
+
+  /**
+   * Validate all pose IDs exist
+   */
+  private async validatePoseIds(poseIds: string[]): Promise<void> {
+    const poses = await Promise.all(
+      poseIds.map(id => this.productPoseRepo.findOne({ where: { id } })),
+    );
+
+    const missingPoses = poses
+      .map((pose, index) => (!pose ? poseIds[index] : null))
+      .filter((id): id is string => id !== null);
+
+    if (missingPoses.length > 0) {
+      throw new NotFoundException(`Product poses not found: ${missingPoses.join(', ')}`);
+    }
+  }
+
+  /**
+   * Fetch shared reference images (face, background) - used for all poses
+   */
+  private async fetchSharedReferences(dto: GenerateBulkImageDto): Promise<{
+    aiFace: string;
+    productBackground: string;
+  }> {
+    const [productBackground, aiFace] = await Promise.all([
+      this.productBackgroundRepo.findOne({ where: { id: dto.productBackgroundId } }),
+      this.aiFaceRepo.findOne({ where: { id: dto.aiFaceId } }),
+    ]);
+
+    if (!productBackground?.imageUrl && !productBackground?.imagePath) {
+      throw new NotFoundException(
+        `${ERROR_MESSAGES.MISSING_REFERENCE_IMAGE}: Product background image not available`,
+      );
+    }
+    if (!aiFace?.imageUrl && !aiFace?.imagePath) {
+      throw new NotFoundException(
+        `${ERROR_MESSAGES.MISSING_REFERENCE_IMAGE}: AI face image not available`,
+      );
+    }
+
+    // Download images from GCS and convert to base64
+    const [backgroundBuffer, faceBuffer] = await Promise.all([
+      this.gcsStorageService.downloadFile(
+        productBackground.imagePath || productBackground.imageUrl,
+      ),
+      this.gcsStorageService.downloadFile(aiFace.imagePath || aiFace.imageUrl),
+    ]);
+
+    return {
+      aiFace: faceBuffer.toString('base64'),
+      productBackground: backgroundBuffer.toString('base64'),
+    };
+  }
+
+  /**
+   * Fetch pose descriptions for all pose IDs in parallel
+   */
+  private async fetchPoseDescriptions(poseIds: string[]): Promise<Record<string, string>> {
+    const poses = await Promise.all(
+      poseIds.map(id => this.productPoseRepo.findOne({ where: { id } })),
+    );
+
+    const descriptions: Record<string, string> = {};
+    poses.forEach((pose, index) => {
+      if (pose) {
+        descriptions[poseIds[index]] = pose.description?.trim() || STATIC_POSE_DESCRIPTION;
+      }
+    });
+
+    return descriptions;
   }
 
   /**
@@ -233,8 +512,11 @@ export class ImageGenerationService {
     errorMessage?: string;
     generationTimeMs: number;
     expiresAt: Date | null;
+    generationType: GenerationType;
+    userId?: string;
   }): Promise<GeneratedImage> {
     const record = this.generatedImageRepo.create({
+      userId: data.userId,
       industryId: data.industryId,
       categoryId: data.categoryId,
       productTypeId: data.productTypeId,
@@ -248,9 +530,9 @@ export class ImageGenerationService {
       errorMessage: data.errorMessage,
       generationTimeMs: data.generationTimeMs,
       expiresAt: data.expiresAt,
+      generationType: data.generationType,
     });
 
     return await this.generatedImageRepo.save(record);
   }
 }
-

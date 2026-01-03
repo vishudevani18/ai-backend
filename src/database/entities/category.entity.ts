@@ -1,4 +1,4 @@
-import { Entity, Column, ManyToOne, OneToMany, Index } from 'typeorm';
+import { Entity, Column, ManyToOne, OneToMany, Index, JoinColumn } from 'typeorm';
 import { Industry } from './industry.entity';
 import { ProductType } from './product-type.entity';
 import { BaseEntity } from './base.entity';
@@ -19,9 +19,10 @@ export class Category extends BaseEntity {
   imagePath?: string; // GCS path for deletion
 
   @ManyToOne(() => Industry, industry => industry.categories, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'industry_id' })
   industry: Industry;
 
-  @Column({ name: 'industry_id' })
+  @Column({ name: 'industry_id', type: 'uuid' })
   industryId: string;
 
   @OneToMany(() => ProductType, pt => pt.category)

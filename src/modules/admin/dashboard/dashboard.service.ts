@@ -1,7 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, MoreThan, In } from 'typeorm';
-import { GeneratedImage, GenerationStatus } from '../../../database/entities/generated-image.entity';
+import {
+  GeneratedImage,
+  GenerationStatus,
+  GenerationType,
+} from '../../../database/entities/generated-image.entity';
 import { Industry } from '../../../database/entities/industry.entity';
 import { Category } from '../../../database/entities/category.entity';
 import { ProductType } from '../../../database/entities/product-type.entity';
@@ -56,6 +60,10 @@ export class DashboardService {
       last7DaysCount,
       last30DaysCount,
       avgGenerationTime,
+      bulkGenerationsCount,
+      bulkImagesGenerated,
+      bulkSuccessful,
+      bulkFailed,
     ] = await Promise.all([
       this.generatedImageRepository.count(),
       this.generatedImageRepository.count({
@@ -74,9 +82,19 @@ export class DashboardService {
         where: { createdAt: MoreThan(last30Days) },
       }),
       this.getAverageGenerationTime(),
+      this.getBulkGenerationsCount(),
+      this.getBulkImagesGenerated(),
+      this.generatedImageRepository.count({
+        where: { generationType: GenerationType.BULK, generationStatus: GenerationStatus.SUCCESS },
+      }),
+      this.generatedImageRepository.count({
+        where: { generationType: GenerationType.BULK, generationStatus: GenerationStatus.FAILED },
+      }),
     ]);
 
     const successRate = total > 0 ? (successful / total) * 100 : 0;
+    const bulkTotal = bulkSuccessful + bulkFailed;
+    const bulkSuccessRate = bulkTotal > 0 ? (bulkSuccessful / bulkTotal) * 100 : 0;
 
     const generatedImagesStats: GeneratedImagesStatsDto = {
       total,
@@ -87,6 +105,9 @@ export class DashboardService {
       last24Hours: last24HoursCount,
       last7Days: last7DaysCount,
       last30Days: last30DaysCount,
+      bulkGenerations: bulkGenerationsCount,
+      bulkImagesGenerated,
+      bulkSuccessRate: Math.round(bulkSuccessRate * 100) / 100,
     };
 
     // Get user statistics
@@ -96,7 +117,16 @@ export class DashboardService {
     const entityCounts = await this.getEntityCounts();
 
     // Get top items for each category
-    const [topIndustries, topCategories, topProductTypes, topProductPoses, topProductThemes, topProductBackgrounds, topAiFaces, commonErrors] = await Promise.all([
+    const [
+      topIndustries,
+      topCategories,
+      topProductTypes,
+      topProductPoses,
+      topProductThemes,
+      topProductBackgrounds,
+      topAiFaces,
+      commonErrors,
+    ] = await Promise.all([
       this.getTopItems('industryId', this.industryRepository),
       this.getTopItems('categoryId', this.categoryRepository),
       this.getTopItems('productTypeId', this.productTypeRepository),
@@ -298,5 +328,34 @@ export class DashboardService {
       aiFaces,
     };
   }
-}
 
+  /**
+   * Get count of unique bulk generation operations
+   * A bulk generation operation is identified by grouping images with the same
+   * shared parameters (industry, category, productType, theme, background, aiFace)
+   * and generationType = BULK created within a short time window
+   */
+  private async getBulkGenerationsCount(): Promise<number> {
+    // Count distinct bulk generation operations by grouping on shared parameters
+    // We consider images with the same shared params created within 1 minute as one bulk operation
+    const result = await this.generatedImageRepository
+      .createQueryBuilder('gi')
+      .select(
+        "COUNT(DISTINCT CONCAT(gi.industry_id, gi.category_id, gi.product_type_id, gi.product_theme_id, gi.product_background_id, gi.ai_face_id, DATE_TRUNC('minute', gi.created_at)))",
+        'count',
+      )
+      .where('gi.generation_type = :generationType', { generationType: GenerationType.BULK })
+      .getRawOne();
+
+    return result?.count ? parseInt(result.count, 10) : 0;
+  }
+
+  /**
+   * Get total number of images generated via bulk operations
+   */
+  private async getBulkImagesGenerated(): Promise<number> {
+    return this.generatedImageRepository.count({
+      where: { generationType: GenerationType.BULK },
+    });
+  }
+}

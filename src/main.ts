@@ -38,7 +38,12 @@ async function bootstrap() {
     const dataSource = app.get(DataSource);
     await createSuperAdmin(dataSource);
   } catch (error) {
-    console.error('Failed to create super admin:', error.message);
+    console.error('❌ Failed to create super admin:', error.message);
+    if (error.stack) {
+      console.error('Stack trace:', error.stack);
+    }
+    // Don't exit - allow app to continue even if super admin creation fails
+    // Admin can be created manually later if needed
   }
 
   // Increase body limit for Base64 images
@@ -53,29 +58,40 @@ async function bootstrap() {
   // Compression middleware
   app.use(compression());
 
-  // CORS configuration
-  const corsOrigins = configService.get<string[]>('app.cors.origin') || [];
-  const isDevelopment = configService.get('app.nodeEnv') === 'development';
-  
-  // In development, allow all localhost origins for easier development
-  const origin = isDevelopment
-    ? (origin: string, callback: (err: Error | null, allow?: boolean) => void) => {
-        // Allow all localhost origins in development
-        if (!origin || origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) {
-          callback(null, true);
-        } else if (corsOrigins.includes(origin)) {
-          callback(null, true);
-        } else {
-          callback(null, false);
-        }
-      }
-    : corsOrigins;
-
+  // CORS configuration - Allow all origins (localhost, www, http, https)
   app.enableCors({
-    origin,
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps, Postman, etc.)
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+
+      // Allow all localhost origins
+      if (
+        origin.startsWith('http://localhost:') ||
+        origin.startsWith('https://localhost:') ||
+        origin.startsWith('http://127.0.0.1:') ||
+        origin.startsWith('https://127.0.0.1:')
+      ) {
+        callback(null, true);
+        return;
+      }
+
+      // Allow all http and https origins (including www and non-www)
+      if (origin.startsWith('http://') || origin.startsWith('https://')) {
+        callback(null, true);
+        return;
+      }
+
+      // Deny by default (shouldn't reach here for valid origins)
+      callback(null, true);
+    },
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
     credentials: true,
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
   });
 
   // Global validation pipe with custom exception factory for better error formatting

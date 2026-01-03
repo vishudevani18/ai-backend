@@ -33,7 +33,7 @@ export class AiFace extends BaseEntity {
   @JoinColumn({ name: 'category_id' })
   category: Category;
 
-  @Column({ name: 'category_id' })
+  @Column({ name: 'category_id', type: 'uuid' })
   categoryId: string;
 }
 

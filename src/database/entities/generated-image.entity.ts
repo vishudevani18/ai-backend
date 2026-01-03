@@ -6,6 +6,11 @@ export enum GenerationStatus {
   FAILED = 'failed',
 }
 
+export enum GenerationType {
+  SINGLE = 'single',
+  BULK = 'bulk',
+}
+
 @Entity('generated_images')
 export class GeneratedImage extends BaseEntity {
   @Column({ name: 'user_id', type: 'uuid', nullable: true })
@@ -58,5 +63,14 @@ export class GeneratedImage extends BaseEntity {
   @Index('IDX_generated_images_expires_at')
   @Column({ name: 'expires_at', type: 'timestamp with time zone', nullable: true })
   expiresAt?: Date; // 6 hours from creation
+
+  @Index('IDX_generated_images_generation_type')
+  @Column({
+    name: 'generation_type',
+    type: 'enum',
+    enum: GenerationType,
+    default: GenerationType.SINGLE,
+  })
+  generationType: GenerationType;
 }
 

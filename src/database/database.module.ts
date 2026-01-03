@@ -24,7 +24,12 @@ import { StorageModule } from '../storage/storage.module';
            * ✅ Automatically load all entities (from dist or src)
            */
           autoLoadEntities: true,
-          synchronize: configService.get('app.nodeEnv') === 'development',
+          /**
+           * ⚠️ IMPORTANT: synchronize should be FALSE when using migrations
+           * Migrations are the proper way to manage schema changes
+           * Set to true ONLY for initial development/testing without migrations
+           */
+          synchronize: false,
           logging: configService.get('app.nodeEnv') === 'development',
           // ✅ IMPORTANT: Cloud SQL Unix socket does NOT use SSL
           ssl: false,

@@ -25,7 +25,7 @@ export class ProductPose extends BaseEntity {
   @JoinColumn({ name: 'product_type_id' })
   productType: ProductType;
 
-  @Column({ name: 'product_type_id' })
+  @Column({ name: 'product_type_id', type: 'uuid' })
   productTypeId: string;
 
   @ManyToMany(() => ProductBackground, pb => pb.productPoses)
