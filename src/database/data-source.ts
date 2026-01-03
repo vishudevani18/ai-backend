@@ -7,20 +7,50 @@ const nodeEnv = process.env.NODE_ENV || 'development';
 const envFile = `env.${nodeEnv}`;
 config({ path: join(process.cwd(), envFile) });
 
+const host = process.env.DB_HOST || 'localhost';
+const isCloudSql = host && host.startsWith('/cloudsql/');
+
+// Get database config with explicit fallbacks
+const database = process.env.DB_DATABASE || 'dev_db';
+const username = process.env.DB_USERNAME || 'dbuser';
+const password = process.env.DB_PASSWORD || 'password';
+
+// Log configuration for debugging (only in development)
+if (nodeEnv === 'development') {
+  console.log('🔍 [DataSource] Database Config:', {
+    host: host,
+    port: parseInt(process.env.DB_PORT, 10) || 5432,
+    username: username,
+    database: database,
+    hasPassword: !!password,
+    envFile: envFile,
+  });
+}
+
 export const AppDataSource = new DataSource({
   type: 'postgres',
-  host: process.env.DB_HOST || 'localhost',
+  host: host,
   port: parseInt(process.env.DB_PORT, 10) || 5432,
-  username: process.env.DB_USERNAME || 'dbuser',
-  password: process.env.DB_PASSWORD || 'password',
-  database: process.env.DB_DATABASE || 'ai_photo_studio_db',
+  username: username,
+  password: password,
+  database: database,
   entities: [join(__dirname, '**', '*.entity.{js,ts}')],
   synchronize: true, // Enabled for fresh database start - will be disabled when migrations are added
   logging: process.env.NODE_ENV === 'development',
   // ✅ IMPORTANT: Cloud SQL Unix socket does NOT use SSL
   // SSL is handled automatically by Cloud SQL Proxy for Unix socket connections
   ssl: false,
-  extra: {
-    socketPath: process.env.DB_HOST, // 👈 THIS IS THE FIX
-  },
+  extra: isCloudSql
+    ? {
+        socketPath: host, // Only for Cloud SQL Unix socket connections
+      }
+    : {
+        max: 10,
+        min: 2,
+        acquire: 30000,
+        idle: 10000,
+        evict: 1000,
+        handleDisconnects: true,
+        statement_timeout: 30000,
+      },
 });

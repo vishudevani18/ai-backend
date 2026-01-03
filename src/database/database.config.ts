@@ -32,25 +32,6 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
     statement_timeout: 30000, // 30 second query timeout
   },
 
-  // Query optimization - Redis cache (optional, only if Redis is configured)
-  cache: (() => {
-    const redisHost = configService.get('app.redis.host');
-    if (redisHost && redisHost !== 'localhost' && redisHost !== '') {
-      return {
-        type: 'redis',
-        options: {
-          host: redisHost,
-          port: configService.get('app.redis.port', 6379),
-          password: configService.get('app.redis.password'),
-          db: configService.get('app.redis.db', 0),
-        },
-        duration: 30000, // Cache duration in milliseconds
-      };
-    }
-    // No cache if Redis is not configured
-    return false;
-  })(),
-
   // Performance optimizations
   maxQueryExecutionTime: 1000, // Log slow queries
   logger:

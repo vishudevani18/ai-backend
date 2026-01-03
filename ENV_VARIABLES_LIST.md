@@ -73,18 +73,6 @@ These variables are optional but may be required for specific features.
 - `GEMINI_API_KEY` - Google Gemini API key (optional, but required for AI features)
 - `GEMINI_API_URL` - Gemini API endpoint (default: `https://generativelanguage.googleapis.com/v1beta`)
 
-### Stripe Payment (Optional - Required for payment features)
-- `STRIPE_SECRET_KEY` - Stripe secret key (optional, required for payments)
-- `STRIPE_WEBHOOK_SECRET` - Stripe webhook secret (optional, required for webhooks)
-
-### Redis Cache (Optional - Recommended for production)
-- `REDIS_HOST` - Redis host (Cloud Memorystore private IP, e.g., `10.x.x.x`)
-- `REDIS_PORT` - Redis port (default: `6379`)
-- `REDIS_PASSWORD` - Redis password (optional, leave empty if AUTH disabled)
-- `REDIS_DB` - Redis database number (default: `0`)
-- `REDIS_DEFAULT_TTL` - Default cache TTL in seconds (default: `3600`)
-- `REDIS_MAX_ITEMS` - Maximum cached items (default: `1000`)
-
 ### WhatsApp Business API (Optional - Required for WhatsApp features)
 
 #### Meta Direct (WhatsApp Business API)
@@ -144,8 +132,6 @@ Here's a complete example of the "env" secret JSON structure:
   "CSRF_ENABLED": "true",
   "HELMET_ENABLED": "true",
   "GEMINI_API_KEY": "your-gemini-api-key",
-  "STRIPE_SECRET_KEY": "sk_live_your_stripe_key",
-  "STRIPE_WEBHOOK_SECRET": "whsec_your_webhook_secret",
   "GCP_PROJECT_ID": "ai-photo-studio-18",
   "SUPER_ADMIN_EMAIL": "superadmin@yourdomain.com",
   "SUPER_ADMIN_PASSWORD": "your-secure-password"

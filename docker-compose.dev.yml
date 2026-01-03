@@ -8,10 +8,11 @@ services:
       - "8080:8080"
     env_file:
       - env.development
+    environment:
+      CHOKIDAR_USEPOLLING: "true"
+      WATCHPACK_POLLING: "true"
     depends_on:
       postgres:
-        condition: service_healthy
-      redis:
         condition: service_healthy
     volumes:
       - .:/app
@@ -24,32 +25,18 @@ services:
     container_name: ai_app_postgres
     image: postgres:15-alpine
     environment:
-      POSTGRES_USER: dbuser
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: ai_photo_studio_db
+      POSTGRES_USER: dev_user
+      POSTGRES_PASSWORD: dev@Party$18.v
+      POSTGRES_DB: dev_db
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U dbuser"]
-      interval: 5s
-      retries: 5
-
-  redis:
-    container_name: ai_app_redis
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "pg_isready -U dev_user -d dev_db"]
       interval: 5s
       retries: 5
 
 volumes:
   postgres_data:
-  redis_data:

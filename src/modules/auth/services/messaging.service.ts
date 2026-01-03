@@ -43,14 +43,6 @@ export class MessagingService {
           'WhatsApp Business API credentials not configured. OTP sending will be mocked.',
         );
       }
-    } else if (this.provider === 'msg91') {
-      const apiKey = this.configService.get<string>('app.whatsapp.msg91ApiKey');
-      if (apiKey) {
-        this.isInitialized = true;
-        this.logger.log('WhatsApp Business API (MSG91) initialized successfully');
-      } else {
-        this.logger.warn('MSG91 API key not configured. OTP sending will be mocked.');
-      }
     } else if (this.provider === 'gupshup') {
       const apiKey = this.configService.get<string>('app.whatsapp.gupshupApiKey');
       if (apiKey) {
@@ -69,9 +61,15 @@ export class MessagingService {
    */
   async sendOtp(phone: string, purpose: OtpPurpose): Promise<void> {
     const otp = this.otpService.generateOtp();
+    const isDevMode = this.configService.get('app.nodeEnv') === 'development';
 
-    // Store OTP in Redis
+    // Store OTP in database
     await this.otpService.storeOtp(phone, otp, purpose);
+
+    // In dev mode, always log the OTP to console
+    if (isDevMode) {
+      this.logger.warn(`[DEV MODE] OTP for ${phone}: ${otp}`);
+    }
 
     // Determine template based on purpose
     const templateName =
@@ -82,8 +80,6 @@ export class MessagingService {
     try {
       if (this.provider === 'meta-direct') {
         await this.sendViaMetaDirect(phone, otp, templateName);
-      } else if (this.provider === 'msg91') {
-        await this.sendViaMsg91(phone, otp, templateName);
       } else if (this.provider === 'gupshup') {
         await this.sendViaGupshup(phone, otp, templateName);
       } else {
@@ -94,9 +90,9 @@ export class MessagingService {
     } catch (error) {
       this.logger.error(`Failed to send OTP to ${phone}`, error);
 
-      // In development, log the OTP instead of failing
-      if (this.configService.get('app.nodeEnv') === 'development') {
-        this.logger.warn(`[DEV MODE] OTP for ${phone}: ${otp}`);
+      // In development, don't throw error - OTP is already logged and stored
+      if (isDevMode) {
+        this.logger.warn(`[DEV MODE] OTP sending failed, but OTP is logged above and stored in database`);
         return;
       }
 
@@ -154,52 +150,6 @@ export class MessagingService {
     } catch (error: any) {
       const errorMessage = error.response?.data?.error?.message || error.message;
       throw new Error(`Meta WhatsApp API error: ${errorMessage}`);
-    }
-  }
-
-  /**
-   * Send OTP via MSG91 WhatsApp API
-   */
-  private async sendViaMsg91(phone: string, otp: string, templateName: string): Promise<void> {
-    if (!this.isInitialized) {
-      throw new Error('MSG91 API not initialized');
-    }
-
-    const apiKey = this.configService.get<string>('app.whatsapp.msg91ApiKey');
-    const senderId = this.configService.get<string>('app.whatsapp.msg91SenderId');
-
-    if (!apiKey) {
-      throw new Error('MSG91 API key not configured');
-    }
-
-    // Format phone number (remove +)
-    const formattedPhone = phone.replace(/^\+/, '');
-
-    const url = 'https://api.msg91.com/api/v5/whatsapp/send';
-
-    const payload = {
-      flow_id: templateName, // MSG91 uses flow_id or template name
-      recipients: [
-        {
-          mobiles: formattedPhone,
-          var: {
-            otp: otp,
-          },
-        },
-      ],
-    };
-
-    try {
-      const response = await this.httpClient.post(url, payload, {
-        headers: {
-          authkey: apiKey,
-          'Content-Type': 'application/json',
-        },
-      });
-      this.logger.debug(`MSG91 API response: ${JSON.stringify(response.data)}`);
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.message || error.message;
-      throw new Error(`MSG91 API error: ${errorMessage}`);
     }
   }
 

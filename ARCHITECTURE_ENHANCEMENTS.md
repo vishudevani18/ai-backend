@@ -12,7 +12,6 @@ As a 15+ year backend architect, I have successfully implemented all the critica
 - **Enhanced Database Configuration** (`src/database/database.config.ts`)
   - Connection pooling with configurable limits (min: 5, max: 20)
   - Connection acquire timeout and idle timeout
-  - Redis-based query caching with 30-second TTL
   - Performance optimizations and slow query monitoring
 
 - **Query Monitoring Service** (`src/database/services/query-monitoring.service.ts`)
@@ -28,27 +27,6 @@ As a 15+ year backend architect, I have successfully implemented all the critica
 - Enhanced security through input sanitization
 
 ---
-
-## ✅ **2. Redis Caching Strategy**
-
-### **Implemented:**
-- **Comprehensive Cache Service** (`src/cache/services/cache.service.ts`)
-  - TTL-based caching with configurable expiration
-  - Cache invalidation by patterns and tags
-  - `getOrSet` pattern for cache-aside implementation
-  - Error handling and fallback mechanisms
-
-- **Session Cache Service** (`src/cache/services/session-cache.service.ts`)
-  - User session management with Redis
-  - Session activity tracking
-  - Automatic session expiration
-  - Cross-device session invalidation
-
-### **Benefits:**
-- 10x faster API response times
-- Reduced database load by 70%
-- Improved user experience with session persistence
-- Scalable session management
 
 ---
 
@@ -141,7 +119,7 @@ As a 15+ year backend architect, I have successfully implemented all the critica
 
 ### **Implemented:**
 - **Bull Queue Integration** (`src/queue/queue.module.ts`)
-  - Redis-based job queuing
+  - Database-based job queuing
   - Multiple queue types (image generation, email, webhooks)
   - Job retry mechanisms with exponential backoff
   - Job monitoring and management

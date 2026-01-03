@@ -13,13 +13,29 @@ import { StorageModule } from '../storage/storage.module';
         const host = configService.get('app.database.host');
         const isCloudSql = host && host.startsWith('/cloudsql/');
         
+        // Get database config with fallbacks
+        const database = configService.get('app.database.database') || process.env.DB_DATABASE || 'dev_db';
+        const username = configService.get('app.database.username') || process.env.DB_USERNAME;
+        const password = configService.get('app.database.password') || process.env.DB_PASSWORD;
+        
+        // Log configuration for debugging (only in development)
+        if (configService.get('app.nodeEnv') === 'development') {
+          console.log('🔍 Database Config:', {
+            host: host,
+            port: configService.get('app.database.port'),
+            username: username,
+            database: database,
+            hasPassword: !!password,
+          });
+        }
+        
         return {
           type: 'postgres',
           host: host,
           port: configService.get('app.database.port'),
-          username: configService.get('app.database.username'),
-          password: configService.get('app.database.password'),
-          database: configService.get('app.database.database'),
+          username: username,
+          password: password,
+          database: database,
           /**
            * ✅ Automatically load all entities (from dist or src)
            */

@@ -329,7 +329,6 @@ All endpoints use `ResponseUtil` for consistent responses:
 - **Language**: TypeScript
 - **Database**: PostgreSQL with TypeORM
 - **Storage**: Google Cloud Storage
-- **Cache**: Redis (ioredis)
 - **Validation**: class-validator, class-transformer
 - **Documentation**: Swagger/OpenAPI (@nestjs/swagger)
 

@@ -6,7 +6,6 @@ Before running any tests, ensure you have:
 
 1. **Node.js** (v18 or higher)
 2. **PostgreSQL** running on localhost:5432
-3. **Redis** running on localhost:6379 (optional, but recommended)
 
 ## 🚀 Quick Start
 
@@ -33,14 +32,12 @@ Your `env.development` file is already configured with all necessary settings:
 
 ### ✅ Required Services
 - **Database**: PostgreSQL (localhost:5432)
-- **Cache**: Redis (localhost:6379) - Optional
 - **Storage**: Local filesystem
 - **Port**: 3000
 
 ### ✅ API Keys (Mock for Development)
 - **JWT Secrets**: Configured
 - **Gemini API**: Mock key (ready for real API)
-- **Stripe**: Test keys
 - **Storage**: Local provider
 
 ## 🧪 Testing Commands
@@ -131,23 +128,7 @@ brew services start postgresql
 sudo systemctl start postgresql
 ```
 
-#### 2. Redis Connection Error
-```
-Error: connect ECONNREFUSED 127.0.0.1:6379
-```
-**Solution**: Start Redis service (optional)
-```bash
-# Windows
-redis-server
-
-# macOS
-brew services start redis
-
-# Linux
-sudo systemctl start redis
-```
-
-#### 3. Port Already in Use
+#### 2. Port Already in Use
 ```
 Error: listen EADDRINUSE: address already in use :::8080
 ```

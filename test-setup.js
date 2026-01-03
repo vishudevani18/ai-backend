@@ -87,7 +87,6 @@ const requiredEnvVars = [
   'JWT_SECRET',
   'JWT_REFRESH_SECRET',
   'GEMINI_API_KEY',
-  'REDIS_HOST',
   'STORAGE_PROVIDER',
   'BASE_URL'
 ];
@@ -136,13 +135,10 @@ console.log('4. Check health: http://localhost:8080/api/v1/health');
 
 console.log('\n🔧 Configuration Summary:');
 console.log('- Database: PostgreSQL (localhost:5432)');
-console.log('- Redis: localhost:6379');
 console.log('- Storage: Local filesystem');
 console.log('- Port: 8080');
 console.log('- Environment: development');
 
 console.log('\n⚠️ Important Notes:');
 console.log('- Make sure PostgreSQL is running on localhost:5432');
-console.log('- Make sure Redis is running on localhost:6379 (optional for basic functionality)');
-console.log('- The application will work without Redis, but caching will be disabled');
 console.log('- Database will be created automatically on first run');

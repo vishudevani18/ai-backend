@@ -81,7 +81,6 @@ npm run start:dev
    ```bash
    # env.development is already configured with:
    # - Database: PostgreSQL (localhost:5432)
-   # - Redis: localhost:6379 (optional)
    # - Storage: Local filesystem
    # - All API keys: Mock values ready
    ```
@@ -144,10 +143,6 @@ JWT_REFRESH_EXPIRES_IN=7d
 # Gemini API
 GEMINI_API_KEY=your-gemini-api-key
 GEMINI_API_URL=https://generativelanguage.googleapis.com/v1beta
-
-# Stripe
-STRIPE_SECRET_KEY=sk_test_your_stripe_key
-STRIPE_WEBHOOK_SECRET=whsec_your_webhook_secret
 ```
 
 ## 📚 API Documentation
