@@ -60,6 +60,7 @@ export class AuthService {
     const { emailOrPhone, password } = dto;
 
     // 1. Determine if emailOrPhone is email or phone
+    // Note: emailOrPhone is already normalized by Transform decorator in DTO
     const isEmail = emailOrPhone.includes('@');
     const isPhone = /^\+91[6-9]\d{9}$/.test(emailOrPhone);
 
@@ -68,6 +69,7 @@ export class AuthService {
     }
 
     // 2. Find user by email or phone + business relation
+    // Phone numbers are already normalized to +91 format by Transform decorator
     const whereCondition = isEmail ? { email: emailOrPhone } : { phone: emailOrPhone };
     const user = await this.userRepo.findOne({
       where: whereCondition,
@@ -238,6 +240,24 @@ export class AuthService {
       throw new NotFoundException('User not found');
     }
 
+    // Get the default address (single object, same as business)
+    const defaultAddress = user.addresses?.find(
+      (addr) => addr.addressType === 'default',
+    );
+
+    // Transform address to AddressDto format (single object)
+    const addressDto = defaultAddress
+      ? {
+          addressType: defaultAddress.addressType,
+          street: defaultAddress.street,
+          city: defaultAddress.city,
+          state: defaultAddress.state,
+          zipcode: defaultAddress.zipcode,
+          country: defaultAddress.country,
+        }
+      : undefined;
+
+    // Transform business to BusinessDto format
     const businessDto = user.business
       ? {
           businessName: user.business.businessName,
@@ -261,7 +281,7 @@ export class AuthService {
       role: user.role,
       status: user.status,
       profileImage: user.profileImage,
-      addresses: user.addresses,
+      address: addressDto,
       business: businessDto,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
@@ -282,27 +302,9 @@ export class AuthService {
     }
 
     // --------------------------------------------------------
-    // PHONE VALIDATION
-    // --------------------------------------------------------
-    if (dto.phone) {
-      const phoneExists = await this.userRepo.findOne({
-        where: { phone: dto.phone },
-      });
-
-      if (phoneExists && phoneExists.id !== userId) {
-        throw new ConflictException('Phone already in use');
-      }
-
-      // Phone changed → reset verification
-      if (dto.phone !== user.phone) {
-        user.phoneVerified = false;
-      }
-
-      user.phone = dto.phone;
-    }
-
-    // --------------------------------------------------------
     // UPDATE ALLOWED FIELDS
+    // Note: Phone number cannot be updated via profile endpoint for security reasons.
+    // Phone is set during signup and cannot be changed.
     // --------------------------------------------------------
     if (dto.firstName) user.firstName = dto.firstName;
     if (dto.lastName) user.lastName = dto.lastName;
@@ -597,7 +599,7 @@ export class AuthService {
   }
 
   async resetPasswordWithOtp(
-    phone: string,
+    sessionToken: string,
     newPassword: string,
     confirmPassword: string,
   ): Promise<void> {
@@ -606,8 +608,22 @@ export class AuthService {
       throw new BadRequestException('Passwords do not match');
     }
 
-    // Find user
-    const user = await this.userRepo.findOne({ where: { phone } });
+    // Verify session token and get the phone number it's associated with
+    // This ensures the user has verified OTP and prevents unauthorized password resets
+    const phoneFromSession = await this.otpService.verifyOtpSession(
+      sessionToken,
+      OtpPurpose.RESET_PASSWORD,
+    );
+
+    if (!phoneFromSession) {
+      throw new BadRequestException('Invalid or expired session token. Please verify OTP again.');
+    }
+
+    // Session token is now consumed (deleted), so it can't be reused
+    // The phone number from the session is the one that was verified via OTP
+
+    // Find user by the verified phone number
+    const user = await this.userRepo.findOne({ where: { phone: phoneFromSession } });
     if (!user) {
       throw new NotFoundException('User not found');
     }

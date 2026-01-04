@@ -1,4 +1,4 @@
-import { IsString, MinLength, MaxLength, IsOptional, Matches, IsUrl } from 'class-validator';
+import { IsString, MinLength, MaxLength, IsOptional, IsUrl } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class UpdateProfileDto {
@@ -20,16 +20,6 @@ export class UpdateProfileDto {
   @IsString()
   @MaxLength(50)
   lastName?: string;
-
-  @ApiPropertyOptional({
-    description: 'Updated Indian phone number in +91 format',
-    example: '+919876543210',
-  })
-  @IsOptional()
-  @Matches(/^\+91[6-9]\d{9}$/, {
-    message: 'Phone number must be a valid Indian number starting with +91',
-  })
-  phone?: string;
 
   @ApiPropertyOptional({
     description: 'Updated profile image URL',

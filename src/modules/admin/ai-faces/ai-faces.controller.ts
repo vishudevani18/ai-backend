@@ -30,7 +30,7 @@ import { UserRole } from '../../../database/entities/user.entity';
 import { FilterAiFacesDto } from './dto/filter-ai-faces.dto';
 import { AiFaceGender } from '../../../database/entities/ai-face.entity';
 
-@ApiTags('Admin - AI Faces')
+@ApiTags('2. Admin - AI Faces')
 @Controller(ROUTES.ADMIN.AI_FACES)
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)

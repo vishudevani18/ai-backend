@@ -31,7 +31,7 @@ import { User } from '../../../database/entities/user.entity';
 import { ResponseUtil } from '../../../common/utils/response.util';
 import { FilterAdminUsersDto } from './dto/filter-admin-users.dto';
 
-@ApiTags('Admin - Admin Users Management')
+@ApiTags('2. Admin - Admin Users Management')
 @Controller(ROUTES.ADMIN.ADMIN_USERS)
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.SUPER_ADMIN)

@@ -14,13 +14,12 @@ export class JwtRefreshStrategy extends PassportStrategy(Strategy, 'jwt-refresh'
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
         (req: Request) => {
-          const header = req.headers['authorization'];
-          if (!header) return null;
-
-          const [scheme, token] = header.split(' ');
-          if (scheme !== 'Refresh') return null;
-
-          return token;
+          // Read refresh token from request body (OAuth 2.0 compliant)
+          const body = req.body;
+          if (body && body.refreshToken) {
+            return body.refreshToken;
+          }
+          return null;
         },
       ]),
       ignoreExpiration: false,
@@ -30,8 +29,8 @@ export class JwtRefreshStrategy extends PassportStrategy(Strategy, 'jwt-refresh'
   }
 
   async validate(req: Request, payload: any): Promise<any> {
-    const header = req.headers['authorization'];
-    const refreshToken = header?.split(' ')[1];
+    // Read refresh token from request body
+    const refreshToken = req.body?.refreshToken;
     if (!refreshToken) throw new UnauthorizedException('Refresh token missing');
 
     // FIXED: Fetch user WITH refreshToken + expiry

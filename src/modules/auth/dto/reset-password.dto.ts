@@ -1,16 +1,14 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsString, MinLength, MaxLength, Matches } from 'class-validator';
+import { Transform } from 'class-transformer';
 
 export class ResetPasswordDto {
   @ApiProperty({
-    description: 'Phone number used for password reset',
-    example: '+919876543210',
+    description: 'Session token received from OTP verification (required for security)',
+    example: 'abc123def456ghi789jkl012mno345pqr678stu901vwx234yz',
   })
   @IsString()
-  @Matches(/^\+91[6-9]\d{9}$/, {
-    message: 'Phone number must be a valid Indian number starting with +91',
-  })
-  phone: string;
+  sessionToken: string;
 
   @ApiProperty({
     description: 'New password',

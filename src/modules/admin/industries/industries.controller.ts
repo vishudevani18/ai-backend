@@ -24,7 +24,7 @@ import { Roles } from '../../../common/decorators/roles.decorator';
 import { UserRole } from '../../../database/entities/user.entity';
 import { FilterIndustriesDto } from './dto/filter-industries.dto';
 
-@ApiTags('Admin - Industries')
+@ApiTags('2. Admin - Industries')
 @Controller(ROUTES.ADMIN.INDUSTRIES)
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)

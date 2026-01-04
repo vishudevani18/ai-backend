@@ -5,7 +5,7 @@ import { Public } from '../../../common/decorators/public.decorator';
 import { ROUTES } from '../../../common/constants';
 import { ResponseUtil } from '../../../common/utils/response.util';
 
-@ApiTags('WebApp - Legal Documents')
+@ApiTags('1. WebApp - Legal Documents')
 @Controller(ROUTES.WEBAPP.LEGAL_BASE)
 export class LegalController {
   constructor(private readonly legalDocumentsService: LegalDocumentsService) {}

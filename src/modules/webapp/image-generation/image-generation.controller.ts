@@ -1,6 +1,9 @@
-import { Controller, Post, Body, HttpCode, HttpStatus, Req } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
-import { Public } from '../../../common/decorators/public.decorator';
+import { Controller, Post, Body, HttpCode, HttpStatus, Req, UseGuards } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
+import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../../../common/guards/roles.guard';
+import { Roles } from '../../../common/decorators/roles.decorator';
+import { UserRole } from '../../../database/entities/user.entity';
 import { ImageGenerationService } from './image-generation.service';
 import { GenerateImageDto } from './dto/generate-image.dto';
 import { GenerateImageResponseDto } from './dto/generate-image-response.dto';
@@ -9,18 +12,20 @@ import { GenerateBulkImageResponseDto } from './dto/generate-bulk-image-response
 import { ResponseUtil } from '../../../common/utils/response.util';
 import { Request } from 'express';
 
-@ApiTags('WebApp - Image Generation')
+@ApiTags('1. WebApp - Image Generation')
 @Controller('webapp')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(UserRole.USER)
+@ApiBearerAuth()
 export class ImageGenerationController {
   constructor(private readonly imageGenerationService: ImageGenerationService) {}
 
-  @Public()
   @Post('generate-image')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Generate composite image using AI (Public)',
+    summary: 'Generate composite image using AI (User only)',
     description:
-      'Generates a composite image using Google Gemini API. Accepts product catalog IDs (industry, category, product type, pose, theme, background, AI face) and a user-uploaded product image. The generated image is stored in GCS with public CDN access and automatically deleted after 6 hours. All generations are logged in the database for analytics.',
+      'Generates a composite image using Google Gemini API. Accepts product catalog IDs (industry, category, product type, pose, theme, background, AI face) and a user-uploaded product image. The generated image is stored in GCS with public CDN access and automatically deleted after 6 hours. All generations are logged in the database for analytics. Requires USER role authentication.',
   })
   @ApiBody({ type: GenerateImageDto })
   @ApiResponse({
@@ -31,6 +36,14 @@ export class ImageGenerationController {
   @ApiResponse({
     status: 400,
     description: 'Invalid request or missing reference images',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized - Invalid or missing token',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - USER role required',
   })
   @ApiResponse({
     status: 404,
@@ -49,13 +62,12 @@ export class ImageGenerationController {
     return ResponseUtil.success(response, 'Image generated successfully');
   }
 
-  @Public()
   @Post('generate-bulk-image')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Generate multiple composite images using AI (Public)',
+    summary: 'Generate multiple composite images using AI (User only)',
     description:
-      'Generates multiple composite images using Google Gemini API based on multiple pose IDs. Accepts product catalog IDs (industry, category, product type, multiple poses, theme, background, AI face) and a user-uploaded product image. All images are generated in parallel to maintain the same quality as individual calls. Generated images are stored in GCS with public CDN access and automatically deleted after 6 hours. All generations are logged in the database for analytics.',
+      'Generates multiple composite images using Google Gemini API based on multiple pose IDs. Accepts product catalog IDs (industry, category, product type, multiple poses, theme, background, AI face) and a user-uploaded product image. All images are generated in parallel to maintain the same quality as individual calls. Generated images are stored in GCS with public CDN access and automatically deleted after 6 hours. All generations are logged in the database for analytics. Requires USER role authentication.',
   })
   @ApiBody({ type: GenerateBulkImageDto })
   @ApiResponse({
@@ -66,6 +78,14 @@ export class ImageGenerationController {
   @ApiResponse({
     status: 400,
     description: 'Invalid request, missing reference images, or all generations failed',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized - Invalid or missing token',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - USER role required',
   })
   @ApiResponse({
     status: 404,

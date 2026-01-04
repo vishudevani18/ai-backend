@@ -9,7 +9,7 @@ import { DashboardService } from './dashboard.service';
 import { DashboardStatsResponseDto } from './dto/dashboard-stats.dto';
 import { ROUTES } from '../../../common/constants';
 
-@ApiTags('Admin - Dashboard')
+@ApiTags('2. Admin - Dashboard')
 @Controller(ROUTES.ADMIN.BASE)
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth()

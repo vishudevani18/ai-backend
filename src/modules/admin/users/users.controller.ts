@@ -25,7 +25,7 @@ import { AdminUsersService } from './users.service';
 import { ResponseUtil } from '../../../common/utils/response.util';
 import { FilterUsersDto } from './dto/filter-users.dto';
 
-@ApiTags('Admin - User Management')
+@ApiTags('2. Admin - User Management')
 @Controller(ROUTES.ADMIN.USERS)
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)

@@ -36,7 +36,11 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
     const errorResponse = ResponseUtil.error(null, message, requestId);
 
-    return response.status(status).json(errorResponse);
+    // Ensure proper headers are set
+    response.setHeader('Content-Type', 'application/json');
+    
+    // Send response with proper status and JSON body
+    response.status(status).json(errorResponse);
   }
 }
 
@@ -131,6 +135,10 @@ export class AllExceptionsFilter implements ExceptionFilter {
     // --------------------------------------------------------------------
     const errorResponse = ResponseUtil.error(null, message, requestId);
 
-    return response.status(status).json(errorResponse);
+    // Ensure proper headers are set
+    response.setHeader('Content-Type', 'application/json');
+    
+    // Send response with proper status and JSON body
+    response.status(status).json(errorResponse);
   }
 }

@@ -1,14 +1,17 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, UseGuards } from '@nestjs/common';
 import { WebAppService } from './webapp.service';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
-import { Public } from '../../common/decorators/public.decorator';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { UserRole } from '../../database/entities/user.entity';
 import { ResponseUtil } from '../../common/utils/response.util';
 
-@ApiTags('WebApp - User')
+@ApiTags('1. WebApp - User')
 @Controller('webapp')
-//@UseGuards(JwtAuthGuard, RolesGuard)
-//@Roles(UserRole.USER)
-//@ApiBearerAuth()
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(UserRole.USER)
+@ApiBearerAuth()
 export class WebAppController {
   constructor(private readonly service: WebAppService) {}
 
@@ -17,22 +20,29 @@ export class WebAppController {
     summary:
       'Get all industries with categories, product types, themes, and backgrounds (User only)',
     description:
-      'Returns a nested hierarchy of industries → categories → product types → themes → background images, excluding soft-deleted records. Requires USER role.',
+      'Returns a nested hierarchy of industries → categories → product types → themes → background images, excluding soft-deleted records. Requires USER role authentication.',
   })
   @ApiResponse({
     status: 200,
     description: 'Nested data retrieved successfully',
   })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized - Invalid or missing token',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - USER role required',
+  })
   getIndustriesTree() {
     return this.service.getIndustriesTree();
   }
 
-  @Public()
   @Get('systemdata')
   @ApiOperation({
-    summary: 'Get system data statistics (Public)',
+    summary: 'Get system data statistics (User only)',
     description:
-      'Returns counts of AI Faces, Backgrounds, Poses, Categories, Industries, and Themes. Excludes soft-deleted records. Public endpoint, no authentication required.',
+      'Returns counts of AI Faces, Backgrounds, Poses, Categories, Industries, and Themes. Excludes soft-deleted records. Requires USER role authentication.',
   })
   @ApiResponse({
     status: 200,
@@ -57,6 +67,14 @@ export class WebAppController {
         timestamp: { type: 'string', example: '2024-01-15T10:30:00.000Z' },
       },
     },
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized - Invalid or missing token',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - USER role required',
   })
   async getSystemData() {
     const data = await this.service.getSystemData();

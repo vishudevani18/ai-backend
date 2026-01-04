@@ -46,10 +46,10 @@ export class ProfileDto {
   profileImage?: string;
 
   @ApiPropertyOptional({
-    description: 'User addresses',
-    type: [AddressDto],
+    description: 'User primary address',
+    type: AddressDto,
   })
-  addresses?: AddressDto[];
+  address?: AddressDto;
 
   @ApiPropertyOptional({
     description: 'Business details associated with the user',

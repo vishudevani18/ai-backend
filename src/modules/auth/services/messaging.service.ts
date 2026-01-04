@@ -145,8 +145,7 @@ export class MessagingService {
     };
 
     try {
-      const response = await this.httpClient.post(url, payload);
-      this.logger.debug(`WhatsApp API response: ${JSON.stringify(response.data)}`);
+      await this.httpClient.post(url, payload);
     } catch (error: any) {
       const errorMessage = error.response?.data?.error?.message || error.message;
       throw new Error(`Meta WhatsApp API error: ${errorMessage}`);
@@ -206,7 +205,6 @@ export class MessagingService {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
       });
-      this.logger.debug(`Gupshup API response: ${JSON.stringify(response.data)}`);
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || error.message;
       throw new Error(`Gupshup API error: ${errorMessage}`);

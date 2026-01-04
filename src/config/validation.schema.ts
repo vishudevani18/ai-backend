@@ -16,6 +16,7 @@ import {
   DEFAULT_LOG_FILE,
   DEFAULT_CSRF_ENABLED,
   DEFAULT_HELMET_ENABLED,
+  DEFAULT_OTP_EXPIRY_MINUTES,
 } from 'src/common/constants/config.constants';
 
 export const validationSchema = Joi.object({
@@ -59,6 +60,9 @@ export const validationSchema = Joi.object({
   // Security
   CSRF_ENABLED: Joi.boolean().default(DEFAULT_CSRF_ENABLED),
   HELMET_ENABLED: Joi.boolean().default(DEFAULT_HELMET_ENABLED),
+
+  // OTP Configuration
+  OTP_EXPIRY_MINUTES: Joi.number().default(DEFAULT_OTP_EXPIRY_MINUTES),
 
   // WhatsApp Business API - Optional
   WHATSAPP_PROVIDER: Joi.string().valid('meta-direct', 'gupshup').optional(),

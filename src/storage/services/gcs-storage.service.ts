@@ -13,7 +13,7 @@ export class GcsStorageService {
     const projectId = this.configService.get<string>('app.storage.gcs.projectId');
     this.bucketName = this.configService.get<string>('app.storage.gcs.bucketName');
     this.cdnBaseUrl = this.configService.get<string>('app.storage.gcs.cdnBaseUrl');
-console.log('GcsStorageService constructor', projectId, this.bucketName, this.cdnBaseUrl);
+
     try {
       this.storage = new Storage({
         projectId,
@@ -35,7 +35,6 @@ console.log('GcsStorageService constructor', projectId, this.bucketName, this.cd
     if (!mimetype) {
       throw new BadRequestException('Content type (mimetype) is required for file upload');
     }
-    console.log('uploadPublicFile', buffer, path, mimetype);
 
     try {
       const bucket = this.storage.bucket(this.bucketName);

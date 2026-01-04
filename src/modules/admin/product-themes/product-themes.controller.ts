@@ -29,7 +29,7 @@ import { Roles } from '../../../common/decorators/roles.decorator';
 import { UserRole } from '../../../database/entities/user.entity';
 import { FilterProductThemesDto } from './dto/filter-product-themes.dto';
 
-@ApiTags('Admin - Product Themes')
+@ApiTags('2. Admin - Product Themes')
 @Controller(ROUTES.ADMIN.PRODUCT_THEMES)
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)

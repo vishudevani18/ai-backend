@@ -11,7 +11,7 @@ import { Roles } from '../../../common/decorators/roles.decorator';
 import { UserRole } from '../../../database/entities/user.entity';
 import { FilterProductTypesDto } from './dto/filter-product-types.dto';
 
-@ApiTags('Admin - Product Types')
+@ApiTags('2. Admin - Product Types')
 @Controller(ROUTES.ADMIN.PRODUCT_TYPES)
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)

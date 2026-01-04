@@ -33,6 +33,7 @@ import {
   DEFAULT_WHATSAPP_OTP_RESET_TEMPLATE,
   DEFAULT_GEMINI_IMAGE_MODEL,
   DEFAULT_IMAGE_RETENTION_HOURS,
+  DEFAULT_OTP_EXPIRY_MINUTES,
 } from 'src/common/constants/config.constants';
 
 export default registerAs('app', () => ({
@@ -107,5 +108,8 @@ export default registerAs('app', () => ({
       process.env.WHATSAPP_OTP_SIGNUP_TEMPLATE || DEFAULT_WHATSAPP_OTP_SIGNUP_TEMPLATE,
     otpResetTemplate:
       process.env.WHATSAPP_OTP_RESET_TEMPLATE || DEFAULT_WHATSAPP_OTP_RESET_TEMPLATE,
+  },
+  otp: {
+    expiryMinutes: parseInt(process.env.OTP_EXPIRY_MINUTES, 10) || DEFAULT_OTP_EXPIRY_MINUTES,
   },
 }));

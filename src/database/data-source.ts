@@ -15,18 +15,6 @@ const database = process.env.DB_DATABASE || 'dev_db';
 const username = process.env.DB_USERNAME || 'dbuser';
 const password = process.env.DB_PASSWORD || 'password';
 
-// Log configuration for debugging (only in development)
-if (nodeEnv === 'development') {
-  console.log('🔍 [DataSource] Database Config:', {
-    host: host,
-    port: parseInt(process.env.DB_PORT, 10) || 5432,
-    username: username,
-    database: database,
-    hasPassword: !!password,
-    envFile: envFile,
-  });
-}
-
 export const AppDataSource = new DataSource({
   type: 'postgres',
   host: host,

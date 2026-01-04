@@ -5,7 +5,6 @@ import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
 import {
   OTP_LENGTH,
-  OTP_EXPIRY_SECONDS,
   OTP_RATE_LIMIT_COUNT,
   OTP_RATE_LIMIT_WINDOW_SECONDS,
   OtpPurpose,
@@ -74,7 +73,9 @@ export class OtpService {
 
     // Hash OTP before storing
     const hashedOtp = crypto.createHash('sha256').update(otp).digest('hex');
-    const expiresAt = new Date(Date.now() + OTP_EXPIRY_SECONDS * 1000);
+    const otpExpiryMinutes = this.configService.get<number>('app.otp.expiryMinutes') || 2;
+    const otpExpirySeconds = otpExpiryMinutes * 60;
+    const expiresAt = new Date(Date.now() + otpExpirySeconds * 1000);
 
     // Delete any existing OTP for this phone and purpose
     await this.otpRepo.delete({
@@ -136,7 +137,7 @@ export class OtpService {
    */
   async createOtpSession(phone: string, purpose: OtpPurpose): Promise<string> {
     const sessionToken = crypto.randomBytes(32).toString('hex');
-    const sessionExpiresAt = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
+    const sessionExpiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
 
     // Find existing OTP record and update it with session token
     const otpRecord = await this.otpRepo.findOne({

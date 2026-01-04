@@ -30,6 +30,8 @@ import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { CompleteRegistrationDto } from './dto/complete-registration.dto';
 import { VerifyResetOtpDto } from './dto/verify-reset-otp.dto';
 import { ResendOtpDto } from './dto/resend-otp.dto';
+import { RefreshTokenDto } from './dto/refresh-token.dto';
+import { LogoutDto } from './dto/logout.dto';
 import { OtpPurpose } from '../../common/constants/auth.constants';
 
 import { JwtRefreshGuard } from '../../common/guards/jwt-refresh.guard';
@@ -38,7 +40,7 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RateLimit } from '../../security/decorators/rate-limit.decorator';
 import { ResponseUtil } from '../../common/utils/response.util';
 
-@ApiTags('WebApp - Authentication')
+@ApiTags('1. WebApp - Authentication')
 @Controller(ROUTES.WEBAPP.BASE)
 @UseInterceptors(ClassSerializerInterceptor)
 export class AuthController {
@@ -103,6 +105,8 @@ export class AuthController {
   @ApiOperation({ summary: 'Login user' })
   @ApiBody({ type: LoginDto })
   @ApiResponse({ status: 200, description: 'User successfully logged in', type: AuthResponseDto })
+  @ApiResponse({ status: 401, description: 'Invalid email/phone or password' })
+  @ApiResponse({ status: 400, description: 'Invalid email/phone format or validation error' })
   async login(@Body() loginDto: LoginDto) {
     const result = await this.authService.login(loginDto);
     return ResponseUtil.success(result, 'User logged in successfully');
@@ -131,24 +135,27 @@ export class AuthController {
   @UseGuards(JwtRefreshGuard)
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
-  @ApiSecurity('refresh-token') // ✔️ Correct for custom header
-  @ApiOperation({ summary: 'Refresh access token' })
-  @ApiResponse({ status: 200, type: AuthResponseDto })
-  async refresh(@CurrentUser() user: any) {
-    const result = await this.authService.refreshToken(user.id, user.token);
+  @ApiOperation({ summary: 'Refresh access token (OAuth 2.0 compliant)' })
+  @ApiBody({ type: RefreshTokenDto })
+  @ApiResponse({ status: 200, type: AuthResponseDto, description: 'Tokens refreshed successfully' })
+  @ApiResponse({ status: 401, description: 'Invalid or expired refresh token' })
+  async refresh(@Body() dto: RefreshTokenDto, @CurrentUser() user: any) {
+    const result = await this.authService.refreshToken(user.id, dto.refreshToken);
     return ResponseUtil.success(result, 'Token refreshed successfully');
   }
 
   // -----------------------------------------------------
   // LOGOUT
   // -----------------------------------------------------
+  @Public()
   @UseGuards(JwtRefreshGuard)
   @Post('logout')
   @HttpCode(HttpStatus.OK)
-  @ApiBearerAuth('refresh-token')
-  @ApiOperation({ summary: 'Logout user' })
+  @ApiOperation({ summary: 'Logout user (OAuth 2.0 compliant)' })
+  @ApiBody({ type: LogoutDto })
   @ApiResponse({ status: 200, description: 'User logged out successfully' })
-  async logout(@CurrentUser() user: any) {
+  @ApiResponse({ status: 401, description: 'Invalid or expired refresh token' })
+  async logout(@Body() dto: LogoutDto, @CurrentUser() user: any) {
     await this.authService.logout(user.id);
     return ResponseUtil.success(null, 'User logged out successfully');
   }
@@ -212,11 +219,16 @@ export class AuthController {
   @Post('reset-password')
   @RateLimit({ limit: 5, window: 60 * 10 })
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Reset password after OTP verification' })
+  @ApiOperation({ 
+    summary: 'Reset password after OTP verification',
+    description: 'Requires session token from OTP verification. Session token expires in 5 minutes and can only be used once.'
+  })
   @ApiBody({ type: ResetPasswordDto })
   @ApiResponse({ status: 200, description: 'Password reset successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid or expired session token' })
   async resetPassword(@Body() dto: ResetPasswordDto) {
-    await this.authService.resetPasswordWithOtp(dto.phone, dto.newPassword, dto.confirmPassword);
+    const { sessionToken, newPassword, confirmPassword } = dto;
+    await this.authService.resetPasswordWithOtp(sessionToken, newPassword, confirmPassword);
     return ResponseUtil.success(null, 'Password has been successfully reset');
   }
 }

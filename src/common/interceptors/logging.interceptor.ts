@@ -22,14 +22,24 @@ export class LoggingInterceptor implements NestInterceptor {
     this.logger.log(`[${requestId}] ${method} ${url} - ${ip} - ${userAgent}`);
 
     return next.handle().pipe(
-      tap(() => {
-        const { statusCode } = response;
-        const contentLength = response.get('content-length');
-        const duration = Date.now() - startTime;
+      tap({
+        next: () => {
+          const { statusCode } = response;
+          const contentLength = response.get('content-length');
+          const duration = Date.now() - startTime;
 
-        this.logger.log(
-          `[${requestId}] ${method} ${url} ${statusCode} ${contentLength} - ${duration}ms`,
-        );
+          this.logger.log(
+            `[${requestId}] ${method} ${url} ${statusCode} ${contentLength} - ${duration}ms`,
+          );
+        },
+        error: () => {
+          // Exception filters handle the response, but we still log the completion
+          const { statusCode } = response;
+          const duration = Date.now() - startTime;
+          this.logger.log(
+            `[${requestId}] ${method} ${url} ${statusCode} - ${duration}ms (error handled)`,
+          );
+        },
       }),
     );
   }

@@ -22,7 +22,7 @@ import { Roles } from '../../../common/decorators/roles.decorator';
 import { UserRole } from '../../../database/entities/user.entity';
 import { ResponseUtil } from '../../../common/utils/response.util';
 
-@ApiTags('Admin - Legal Documents')
+@ApiTags('2. Admin - Legal Documents')
 @Controller(ROUTES.ADMIN.LEGAL_DOCUMENTS)
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)

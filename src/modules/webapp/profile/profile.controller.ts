@@ -11,7 +11,7 @@ import { UpdateUserDto } from '../../users/dto/update-user.dto';
 import { ChangePasswordDto } from '../../users/dto/change-password.dto';
 import { ResponseUtil } from '../../../common/utils/response.util';
 
-@ApiTags('WebApp - User Profile')
+@ApiTags('1. WebApp - User Profile')
 @Controller('webapp/profile')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.USER)
@@ -32,7 +32,10 @@ export class WebAppProfileController {
   }
 
   @Patch()
-  @ApiOperation({ summary: 'Update current user profile (User only)' })
+  @ApiOperation({ 
+    summary: 'Update current user profile (User only)',
+    description: 'Update user profile information. Note: Phone number and email cannot be updated for security reasons. Phone is set during signup and cannot be changed.'
+  })
   @ApiResponse({ status: 200, description: 'Profile updated successfully' })
   async updateProfile(@CurrentUser() user: JwtUser, @Body() updateUserDto: UpdateUserDto) {
     const updatedUser = await this.profileService.updateProfile(user.id, updateUserDto);

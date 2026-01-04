@@ -18,17 +18,6 @@ import { StorageModule } from '../storage/storage.module';
         const username = configService.get('app.database.username') || process.env.DB_USERNAME;
         const password = configService.get('app.database.password') || process.env.DB_PASSWORD;
         
-        // Log configuration for debugging (only in development)
-        if (configService.get('app.nodeEnv') === 'development') {
-          console.log('🔍 Database Config:', {
-            host: host,
-            port: configService.get('app.database.port'),
-            username: username,
-            database: database,
-            hasPassword: !!password,
-          });
-        }
-        
         return {
           type: 'postgres',
           host: host,

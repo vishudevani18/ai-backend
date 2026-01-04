@@ -48,7 +48,6 @@ export class ImageCleanupSubscriber implements EntitySubscriberInterface, OnModu
     if (imagePath) {
       try {
         await this.gcsStorageService.deleteFile(imagePath);
-        console.log(`Deleted image from GCS: ${imagePath} (entity: ${entity.constructor.name})`);
       } catch (error) {
         // Log error but don't fail the delete operation
         console.error(`Failed to delete image from GCS: ${imagePath}`, error);

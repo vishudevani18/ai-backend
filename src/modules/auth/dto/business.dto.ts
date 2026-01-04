@@ -1,5 +1,6 @@
 import { IsString, IsOptional, MaxLength, IsEnum, IsUrl } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
 import { BusinessType, BusinessSegment } from '../../../database/entities/user-business.entity';
 
 export class BusinessDto {
@@ -19,6 +20,7 @@ export class BusinessDto {
     enum: BusinessType,
   })
   @IsOptional()
+  @Transform(({ value }) => (value === '' ? undefined : value))
   @IsEnum(BusinessType, {
     message: 'Business type must be one of: manufacturer, reseller, wholesaler, other',
   })
@@ -30,6 +32,7 @@ export class BusinessDto {
     enum: BusinessSegment,
   })
   @IsOptional()
+  @Transform(({ value }) => (value === '' ? undefined : value))
   @IsEnum(BusinessSegment, {
     message:
       'Business segment must be one of: clothing, accessories, furniture, electronics, other',
@@ -58,6 +61,7 @@ export class BusinessDto {
     example: 'https://www.example.com',
   })
   @IsOptional()
+  @Transform(({ value }) => (value === '' ? undefined : value))
   @IsUrl({}, { message: 'Please provide a valid website URL' })
   websiteUrl?: string;
 
@@ -66,6 +70,7 @@ export class BusinessDto {
     example: 'https://www.example.com/logo.png',
   })
   @IsOptional()
+  @Transform(({ value }) => (value === '' ? undefined : value))
   @IsUrl({}, { message: 'Please provide a valid logo URL' })
   businessLogo?: string;
 }

@@ -141,16 +141,8 @@ async function bootstrap() {
       'bearer',
     )
 
-    // Refresh Token (Custom Header)
-    .addApiKey(
-      {
-        type: 'apiKey',
-        in: 'header',
-        name: 'Authorization',
-        description: 'Enter Refresh Token: Refresh <token>',
-      },
-      'refresh-token',
-    )
+    // Note: Refresh tokens are now sent in request body (OAuth 2.0 compliant)
+    // No separate Swagger auth scheme needed for refresh tokens
 
     .build();
 
