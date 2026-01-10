@@ -1,4 +1,6 @@
 import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
+import { BusinessError, ErrorCode } from '../../../common/errors/business.error';
+import { HttpStatus } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
@@ -19,6 +21,8 @@ import { GeminiImageService } from './services/gemini-image.service';
 import { ImageCleanupService } from './services/image-cleanup.service';
 import { GenerateImageDto } from './dto/generate-image.dto';
 import { GenerateBulkImageDto } from './dto/generate-bulk-image.dto';
+import { CreditsService } from '../../credits/credits.service';
+import { CreditOperationType } from '../../../database/entities/credit-transaction.entity';
 import {
   ERROR_MESSAGES,
   DEFAULT_PROMPT_TEMPLATE,
@@ -51,16 +55,39 @@ export class ImageGenerationService {
     private readonly geminiImageService: GeminiImageService,
     private readonly imageCleanupService: ImageCleanupService,
     private readonly configService: ConfigService,
+    private readonly creditsService: CreditsService,
   ) {}
 
   /**
    * Main method to generate an image
    */
-  async generateImage(dto: GenerateImageDto): Promise<{ imageUrl: string; expiresAt: Date }> {
+  async generateImage(
+    dto: GenerateImageDto,
+    userId: string,
+  ): Promise<{ imageUrl: string; expiresAt: Date }> {
     const startTime = Date.now();
     let generatedImageRecord: GeneratedImage | null = null;
 
     try {
+      // Step 0: Check if user has enough credits BEFORE starting generation
+      const imageGenerationCost =
+        this.configService.get<number>('app.credits.costs.imageGeneration') || 5;
+      const currentBalance = await this.creditsService.checkBalance(userId);
+      
+      if (currentBalance < imageGenerationCost) {
+        throw new BusinessError(
+          ErrorCode.INSUFFICIENT_CREDITS,
+          `Insufficient credits. Required: ${imageGenerationCost}, Available: ${currentBalance}. Please purchase more credits to generate images.`,
+          HttpStatus.PAYMENT_REQUIRED,
+          {
+            userId,
+            required: imageGenerationCost,
+            available: currentBalance,
+            operation: 'image_generation',
+          },
+        );
+      }
+
       // Step 1: Validate all IDs exist and are not soft-deleted
       await this.validateRequest(dto);
 
@@ -107,9 +134,20 @@ export class ImageGenerationService {
         generationTimeMs,
         expiresAt,
         generationType: GenerationType.SINGLE,
+        userId,
       });
 
-      // Step 9: Schedule GCS deletion (database entry remains)
+      // Step 9: Deduct credits after successful generation
+      // Note: imageGenerationCost is already calculated in Step 0
+      await this.creditsService.deductCreditsOrFail(
+        userId,
+        imageGenerationCost,
+        CreditOperationType.IMAGE_GENERATION,
+        `Single image generation: ${generatedImageRecord.id}`,
+        generatedImageRecord.id,
+      );
+
+      // Step 10: Schedule GCS deletion (database entry remains)
       await this.imageCleanupService.scheduleDeletion(imagePath, generatedImageRecord.id);
 
       this.logger.log(`Image generation completed successfully in ${generationTimeMs}ms`);
@@ -129,6 +167,7 @@ export class ImageGenerationService {
         generationTimeMs,
         expiresAt: null,
         generationType: GenerationType.SINGLE,
+        userId,
       });
 
       this.logger.error(
@@ -268,6 +307,34 @@ export class ImageGenerationService {
     }
 
     try {
+      // Step 0: Check if user has enough credits BEFORE starting generation
+      if (!userId) {
+        throw new BadRequestException('User ID is required for bulk image generation');
+      }
+
+      const bulkGenerationCostPerImage =
+        this.configService.get<number>('app.credits.costs.bulkGenerationPerImage') || 5;
+      const totalImages = productPoseIds.length;
+      const totalCreditsRequired = totalImages * bulkGenerationCostPerImage;
+      
+      const currentBalance = await this.creditsService.checkBalance(userId);
+      
+      if (currentBalance < totalCreditsRequired) {
+        throw new BusinessError(
+          ErrorCode.INSUFFICIENT_CREDITS,
+          `Insufficient credits. Required: ${totalCreditsRequired} (${totalImages} images × ${bulkGenerationCostPerImage} credits each), Available: ${currentBalance}. Please purchase more credits to generate images.`,
+          HttpStatus.PAYMENT_REQUIRED,
+          {
+            userId,
+            required: totalCreditsRequired,
+            available: currentBalance,
+            operation: 'bulk_generation',
+            imageCount: totalImages,
+            costPerImage: bulkGenerationCostPerImage,
+          },
+        );
+      }
+
       // Step 1: Validate all shared IDs exist (industry, category, productType, theme, background, aiFace)
       await this.validateBulkRequest(dto);
 
@@ -374,6 +441,20 @@ export class ImageGenerationService {
         poseId: string;
         expiresAt: Date;
       }>;
+
+      // Deduct credits only for successful images
+      if (successfulResults.length > 0 && userId) {
+        const bulkGenerationCostPerImage =
+          this.configService.get<number>('app.credits.costs.bulkGenerationPerImage') || 5;
+        const totalCreditsToDeduct = successfulResults.length * bulkGenerationCostPerImage;
+
+        await this.creditsService.deductCreditsOrFail(
+          userId,
+          totalCreditsToDeduct,
+          CreditOperationType.BULK_GENERATION,
+          `Bulk image generation: ${successfulResults.length} image(s) generated successfully`,
+        );
+      }
 
       const totalTimeMs = Date.now() - startTime;
       this.logger.log(

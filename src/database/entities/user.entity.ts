@@ -1,4 +1,4 @@
-import { Entity, Column, OneToMany, OneToOne } from 'typeorm';
+import { Entity, Column, OneToMany, OneToOne, Index, Check } from 'typeorm';
 import { BaseEntity } from './base.entity';
 import { UserAddress } from './user-address.entity';
 import { UserBusiness } from './user-business.entity';
@@ -16,6 +16,12 @@ export enum UserStatus {
 }
 
 @Entity('users')
+@Index(['email', 'status'])
+@Index(['phone', 'status'])
+@Index(['role', 'status', 'createdAt'])
+@Index(['credits'], { where: 'deleted_at IS NULL AND credits > 0' })
+@Check(`"credits" >= 0`)
+@Check(`"phone" ~ '^\\+91[6-9]\\d{9}$'`)
 export class User extends BaseEntity {
   @Column({ name: 'first_name', length: 100 })
   firstName: string;
@@ -26,13 +32,13 @@ export class User extends BaseEntity {
   @Column({ name: 'email', unique: true, length: 150 })
   email: string;
 
-  @Column({ name: 'password_hash', type: 'text' })
+  @Column({ name: 'password_hash', type: 'varchar', length: 255 })
   passwordHash: string;
 
   @Column({ name: 'phone', length: 20, unique: true })
   phone: string;
 
-  @Column({ name: 'profile_image', type: 'text', nullable: true })
+  @Column({ name: 'profile_image', type: 'varchar', length: 500, nullable: true })
   profileImage?: string;
 
   @Column({ name: 'email_verified', default: false })
@@ -61,7 +67,7 @@ export class User extends BaseEntity {
   lastLogin?: Date;
 
   // Stored hashed — for security
-  @Column({ name: 'refresh_token', type: 'text', nullable: true, select: false })
+  @Column({ name: 'refresh_token', type: 'varchar', length: 255, nullable: true, select: false })
   refreshToken?: string;
 
   @Column({
@@ -83,6 +89,14 @@ export class User extends BaseEntity {
 
   @Column({ name: 'password_reset_expires', type: 'timestamp', nullable: true, select: false })
   passwordResetExpires?: Date;
+
+  @Column({
+    name: 'credits',
+    type: 'integer',
+    default: 0,
+    nullable: false,
+  })
+  credits: number;
 
   @OneToMany(() => UserAddress, address => address.user, { cascade: true })
   addresses: UserAddress[];

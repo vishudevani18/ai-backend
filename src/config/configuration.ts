@@ -34,6 +34,10 @@ import {
   DEFAULT_GEMINI_IMAGE_MODEL,
   DEFAULT_IMAGE_RETENTION_HOURS,
   DEFAULT_OTP_EXPIRY_MINUTES,
+  DEFAULT_SIGNUP_CREDITS,
+  DEFAULT_IMAGE_GENERATION_COST,
+  DEFAULT_BULK_GENERATION_COST_PER_IMAGE,
+  DEFAULT_FACE_SWAP_COST,
 } from 'src/common/constants/config.constants';
 
 export default registerAs('app', () => ({
@@ -111,5 +115,14 @@ export default registerAs('app', () => ({
   },
   otp: {
     expiryMinutes: parseInt(process.env.OTP_EXPIRY_MINUTES, 10) || DEFAULT_OTP_EXPIRY_MINUTES,
+  },
+  credits: {
+    defaultSignupCredits: parseInt(process.env.DEFAULT_SIGNUP_CREDITS, 10) || DEFAULT_SIGNUP_CREDITS,
+    costs: {
+      imageGeneration: parseInt(process.env.IMAGE_GENERATION_COST, 10) || DEFAULT_IMAGE_GENERATION_COST,
+      bulkGenerationPerImage:
+        parseInt(process.env.BULK_GENERATION_COST_PER_IMAGE, 10) || DEFAULT_BULK_GENERATION_COST_PER_IMAGE,
+      faceSwap: parseInt(process.env.FACE_SWAP_COST, 10) || DEFAULT_FACE_SWAP_COST,
+    },
   },
 }));

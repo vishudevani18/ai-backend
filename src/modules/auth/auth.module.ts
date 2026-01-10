@@ -13,11 +13,13 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { JwtRefreshStrategy } from './strategies/jwt-refresh.strategy';
 import { OtpService } from './services/otp.service';
 import { MessagingService } from './services/messaging.service';
+import { CreditsModule } from '../credits/credits.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([User, UserAddress, UserBusiness, Otp]),
     PassportModule,
+    CreditsModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (config: ConfigService) => ({

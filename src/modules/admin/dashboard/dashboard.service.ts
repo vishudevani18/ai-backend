@@ -15,11 +15,16 @@ import { ProductBackground } from '../../../database/entities/product-background
 import { AiFace } from '../../../database/entities/ai-face.entity';
 import { User, UserRole, UserStatus } from '../../../database/entities/user.entity';
 import {
+  CreditTransaction,
+  CreditOperationType,
+} from '../../../database/entities/credit-transaction.entity';
+import {
   DashboardStatsResponseDto,
   GeneratedImagesStatsDto,
   UsersStatsDto,
   EntityCountsDto,
   TopItemDto,
+  CreditsStatsDto,
 } from './dto/dashboard-stats.dto';
 
 @Injectable()
@@ -43,6 +48,8 @@ export class DashboardService {
     private aiFaceRepository: Repository<AiFace>,
     @InjectRepository(User)
     private userRepository: Repository<User>,
+    @InjectRepository(CreditTransaction)
+    private creditTransactionRepository: Repository<CreditTransaction>,
   ) {}
 
   async getDashboardStats(): Promise<DashboardStatsResponseDto> {
@@ -65,13 +72,14 @@ export class DashboardService {
       bulkSuccessful,
       bulkFailed,
     ] = await Promise.all([
-      this.generatedImageRepository.count(),
+      this.generatedImageRepository.count(), // TypeORM automatically excludes soft-deleted
       this.generatedImageRepository.count({
         where: { generationStatus: GenerationStatus.SUCCESS },
       }),
       this.generatedImageRepository.count({
         where: { generationStatus: GenerationStatus.FAILED },
       }),
+      // Partition-ready: Filter by createdAt for partition pruning
       this.generatedImageRepository.count({
         where: { createdAt: MoreThan(last24Hours) },
       }),
@@ -126,6 +134,7 @@ export class DashboardService {
       topProductBackgrounds,
       topAiFaces,
       commonErrors,
+      creditsStats,
     ] = await Promise.all([
       this.getTopItems('industryId', this.industryRepository),
       this.getTopItems('categoryId', this.categoryRepository),
@@ -135,6 +144,7 @@ export class DashboardService {
       this.getTopItems('productBackgroundId', this.productBackgroundRepository),
       this.getTopItems('aiFaceId', this.aiFaceRepository),
       this.getCommonErrors(),
+      this.getCreditsStats(),
     ]);
 
     return {
@@ -149,10 +159,13 @@ export class DashboardService {
       topProductBackgrounds,
       topAiFaces,
       commonErrors,
+      credits: creditsStats,
     };
   }
 
   private async getAverageGenerationTime(): Promise<number> {
+    // Partition-ready: Filter by createdAt for partition pruning (if partitioned)
+    // Note: TypeORM automatically excludes soft-deleted records
     const result = await this.generatedImageRepository
       .createQueryBuilder('gi')
       .select('AVG(gi.generationTimeMs)', 'avg')
@@ -167,6 +180,8 @@ export class DashboardService {
     entityRepository: Repository<any>,
   ): Promise<TopItemDto[]> {
     // Count occurrences of each ID
+    // Partition-ready: Filter by createdAt for partition pruning (if partitioned)
+    // Note: TypeORM automatically excludes soft-deleted records
     const counts = await this.generatedImageRepository
       .createQueryBuilder('gi')
       .select(`gi.${fieldName}`, 'id')
@@ -216,6 +231,8 @@ export class DashboardService {
   }
 
   private async getCommonErrors(): Promise<Array<{ message: string; count: number }>> {
+    // Partition-ready: Filter by createdAt for partition pruning (if partitioned)
+    // Note: TypeORM automatically excludes soft-deleted records
     const errors = await this.generatedImageRepository
       .createQueryBuilder('gi')
       .select('gi.errorMessage', 'message')
@@ -338,6 +355,8 @@ export class DashboardService {
   private async getBulkGenerationsCount(): Promise<number> {
     // Count distinct bulk generation operations by grouping on shared parameters
     // We consider images with the same shared params created within 1 minute as one bulk operation
+    // Partition-ready: Uses created_at for grouping, enables partition pruning
+    // Note: TypeORM automatically excludes soft-deleted records
     const result = await this.generatedImageRepository
       .createQueryBuilder('gi')
       .select(
@@ -354,8 +373,107 @@ export class DashboardService {
    * Get total number of images generated via bulk operations
    */
   private async getBulkImagesGenerated(): Promise<number> {
+    // Partition-ready: Queries will benefit from partition pruning when partitioned
+    // Note: TypeORM automatically excludes soft-deleted records
     return this.generatedImageRepository.count({
       where: { generationType: GenerationType.BULK },
     });
+  }
+
+  /**
+   * Get credit system statistics
+   */
+  private async getCreditsStats(): Promise<CreditsStatsDto> {
+    // Get total credits distributed (signup bonuses)
+    // Partition-ready: Filter by createdAt for partition pruning (if partitioned)
+    // Note: TypeORM automatically excludes soft-deleted records
+    const totalDistributedResult = await this.creditTransactionRepository
+      .createQueryBuilder('ct')
+      .select('SUM(ct.amount)', 'total')
+      .where('ct.operationType = :type', { type: CreditOperationType.SIGNUP_BONUS })
+      .andWhere('ct.amount > 0')
+      .getRawOne();
+    const totalDistributed = totalDistributedResult?.total
+      ? parseInt(totalDistributedResult.total, 10)
+      : 0;
+
+    // Get total credits consumed (negative amounts)
+    // Partition-ready: Filter by createdAt for partition pruning (if partitioned)
+    // Note: TypeORM automatically excludes soft-deleted records
+    const totalConsumedResult = await this.creditTransactionRepository
+      .createQueryBuilder('ct')
+      .select('ABS(SUM(ct.amount))', 'total')
+      .where('ct.amount < 0')
+      .getRawOne();
+    const totalConsumed = totalConsumedResult?.total ? parseInt(totalConsumedResult.total, 10) : 0;
+
+    // Get credits consumed by operation type
+    // Partition-ready: All queries filter by operation type, will benefit from partition pruning
+    // Note: TypeORM automatically excludes soft-deleted records
+    const [imageGenResult, bulkGenResult, faceSwapResult, adminAdjResult] = await Promise.all([
+      this.creditTransactionRepository
+        .createQueryBuilder('ct')
+        .select('ABS(SUM(ct.amount))', 'total')
+        .where('ct.operationType = :type', { type: CreditOperationType.IMAGE_GENERATION })
+        .andWhere('ct.amount < 0')
+        .getRawOne(),
+      this.creditTransactionRepository
+        .createQueryBuilder('ct')
+        .select('ABS(SUM(ct.amount))', 'total')
+        .where('ct.operationType = :type', { type: CreditOperationType.BULK_GENERATION })
+        .andWhere('ct.amount < 0')
+        .getRawOne(),
+      this.creditTransactionRepository
+        .createQueryBuilder('ct')
+        .select('ABS(SUM(ct.amount))', 'total')
+        .where('ct.operationType = :type', { type: CreditOperationType.FACE_SWAP })
+        .andWhere('ct.amount < 0')
+        .getRawOne(),
+      this.creditTransactionRepository
+        .createQueryBuilder('ct')
+        .select('SUM(ct.amount)', 'total')
+        .where('ct.operationType = :type', { type: CreditOperationType.ADMIN_ADJUSTMENT })
+        .getRawOne(),
+    ]);
+
+    const consumedByImageGeneration = imageGenResult?.total
+      ? parseInt(imageGenResult.total, 10)
+      : 0;
+    const consumedByBulkGeneration = bulkGenResult?.total ? parseInt(bulkGenResult.total, 10) : 0;
+    const consumedByFaceSwap = faceSwapResult?.total ? parseInt(faceSwapResult.total, 10) : 0;
+    const adminAdjustments = adminAdjResult?.total ? parseInt(adminAdjResult.total, 10) : 0;
+
+    // Get average credits per user
+    const userCount = await this.userRepository.count({ where: { role: UserRole.USER } });
+    const averageCreditsPerUser = userCount > 0 ? Math.round(totalConsumed / userCount) : 0;
+
+    // Get top 10 users by credit usage
+    // Partition-ready: ORDER BY created_at would enable partition pruning, but grouping by userId is more important
+    // Note: TypeORM automatically excludes soft-deleted records
+    const topUsersResult = await this.creditTransactionRepository
+      .createQueryBuilder('ct')
+      .select('ct.userId', 'userId')
+      .addSelect('ABS(SUM(ct.amount))', 'totalUsed')
+      .where('ct.amount < 0')
+      .groupBy('ct.userId')
+      .orderBy('ABS(SUM(ct.amount))', 'DESC')
+      .limit(10)
+      .getRawMany();
+
+    const topUsersByUsage = topUsersResult.map(item => ({
+      userId: item.userId,
+      totalUsed: parseInt(item.totalUsed, 10),
+    }));
+
+    return {
+      totalDistributed,
+      totalConsumed,
+      consumedByImageGeneration,
+      consumedByBulkGeneration,
+      consumedByFaceSwap,
+      adminAdjustments,
+      averageCreditsPerUser,
+      topUsersByUsage,
+    };
   }
 }

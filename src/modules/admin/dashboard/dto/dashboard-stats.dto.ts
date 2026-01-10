@@ -101,6 +101,32 @@ export class EntityCountsDto {
   aiFaces: number;
 }
 
+export class CreditsStatsDto {
+  @ApiProperty({ description: 'Total credits distributed (signup bonuses)' })
+  totalDistributed: number;
+
+  @ApiProperty({ description: 'Total credits consumed' })
+  totalConsumed: number;
+
+  @ApiProperty({ description: 'Total credits consumed by image generation' })
+  consumedByImageGeneration: number;
+
+  @ApiProperty({ description: 'Total credits consumed by bulk generation' })
+  consumedByBulkGeneration: number;
+
+  @ApiProperty({ description: 'Total credits consumed by face swap (future)' })
+  consumedByFaceSwap: number;
+
+  @ApiProperty({ description: 'Total credits from admin adjustments' })
+  adminAdjustments: number;
+
+  @ApiProperty({ description: 'Average credits per user' })
+  averageCreditsPerUser: number;
+
+  @ApiProperty({ description: 'Top 10 users by credit usage', type: [Object] })
+  topUsersByUsage: Array<{ userId: string; totalUsed: number }>;
+}
+
 export class DashboardStatsResponseDto {
   @ApiProperty({ description: 'Generated images statistics', type: GeneratedImagesStatsDto })
   generatedImages: GeneratedImagesStatsDto;
@@ -134,5 +160,8 @@ export class DashboardStatsResponseDto {
 
   @ApiProperty({ description: 'Common error messages (top 5)', type: [Object] })
   commonErrors: Array<{ message: string; count: number }>;
+
+  @ApiProperty({ description: 'Credit system statistics', type: CreditsStatsDto })
+  credits: CreditsStatsDto;
 }
 

@@ -44,6 +44,7 @@ export class AdminUsersService {
         'user.lastLogin',
         'user.emailVerified',
         'user.profileImage',
+        'user.credits',
         'user.createdAt',
         'user.updatedAt',
       ]);
@@ -62,7 +63,7 @@ export class AdminUsersService {
     }
 
     // Apply sorting
-    const validSortFields = ['createdAt', 'updatedAt', 'email', 'firstName', 'lastName'];
+    const validSortFields = ['createdAt', 'updatedAt', 'email', 'firstName', 'lastName', 'credits'];
     const sortField = validSortFields.includes(sortBy) ? sortBy : 'createdAt';
     queryBuilder.orderBy(`user.${sortField}`, sortOrder);
 
@@ -88,6 +89,7 @@ export class AdminUsersService {
         'lastLogin',
         'emailVerified',
         'profileImage',
+        'credits',
         'createdAt',
         'updatedAt',
       ],

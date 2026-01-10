@@ -21,6 +21,7 @@ export const ROUTES = {
     USERS: 'admin/users', // Regular users management
     ADMIN_USERS: 'admin/admin-users', // Admin users management (super admin only)
     LEGAL_DOCUMENTS: 'admin/legal-documents',
+    CONTACT_SUBMISSIONS: 'admin/contact-submissions',
   },
   WEBAPP: {
     BASE: 'webapp',
@@ -39,6 +40,7 @@ export const ROUTES = {
     LEGAL_BASE: 'webapp/legal',
     PRIVACY_POLICY: 'webapp/legal/privacy-policy',
     TERMS_OF_SERVICE: 'webapp/legal/terms-of-service',
+    CONTACT: 'webapp/contact',
   },
 } as const;
 

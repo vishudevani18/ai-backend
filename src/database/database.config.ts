@@ -1,7 +1,6 @@
 import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
 import { User } from './entities/user.entity';
-import { Image } from './entities/image.entity';
 
 export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOptions => ({
   type: 'postgres',
@@ -10,7 +9,7 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
   username: configService.get('app.database.username'),
   password: configService.get('app.database.password'),
   database: configService.get('app.database.database'),
-  entities: [User, Image],
+  entities: [User],
   synchronize: configService.get('app.nodeEnv') === 'development',
   logging: configService.get('app.nodeEnv') === 'development',
   // ✅ IMPORTANT: Cloud SQL Unix socket does NOT use SSL

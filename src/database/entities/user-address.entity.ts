@@ -1,8 +1,10 @@
-import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, Column, ManyToOne, JoinColumn, Index } from 'typeorm';
 import { BaseEntity } from './base.entity';
 import { User } from './user.entity';
 
 @Entity('user_addresses')
+@Index(['userId'])
+@Index(['userId', 'addressType'])
 export class UserAddress extends BaseEntity {
   @Column({ name: 'user_id', type: 'uuid' })
   userId: string;

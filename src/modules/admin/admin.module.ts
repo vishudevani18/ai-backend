@@ -24,6 +24,8 @@ import { LegalDocumentsModule } from './legal-documents/legal-documents.module';
 import { StorageModule } from '../../storage/storage.module';
 import { AiFacesModule } from './ai-faces/ai-faces.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { AdminCreditsModule } from './credits/credits.module';
+import { ContactSubmissionsModule } from './contact-submissions/contact-submissions.module';
 
 @Module({
   imports: [
@@ -40,6 +42,8 @@ import { DashboardModule } from './dashboard/dashboard.module';
     LegalDocumentsModule,
     AiFacesModule,
     DashboardModule,
+    AdminCreditsModule,
+    ContactSubmissionsModule,
     StorageModule,
   ],
   controllers: [

@@ -1,0 +1,48 @@
+import { ApiProperty } from '@nestjs/swagger';
+
+export class GenerationsStatisticsDto {
+  @ApiProperty({ description: 'Number of users who generated images using single generation' })
+  usersWithSingleGeneration: number;
+
+  @ApiProperty({ description: 'Number of users who generated images using bulk/multi-image generation' })
+  usersWithBulkGeneration: number;
+
+  @ApiProperty({ description: 'Total number of image generations' })
+  totalImageGenerations: number;
+}
+
+export class GeneralStatisticsDto {
+  @ApiProperty({ description: 'Total credits in the system (distributed)' })
+  totalCredits: number;
+
+  @ApiProperty({ description: 'Total remaining credits across all users' })
+  remainingCredits: number;
+
+  @ApiProperty({ description: 'Total credits used by all users' })
+  usedCredits: number;
+
+  @ApiProperty({ description: 'Total credits purchased for image generation (dummy value until payment integration)' })
+  totalGeneratedImagePurchasedCredit: number;
+
+  @ApiProperty({ description: 'Total paid amount in the system (dummy value until payment integration)' })
+  totalPaidAmount: number;
+}
+
+export class SystemStatisticsResponseDto {
+  @ApiProperty({ description: 'Generation statistics', type: GenerationsStatisticsDto })
+  generations: GenerationsStatisticsDto;
+
+  @ApiProperty({ description: 'System statistics (entity counts)' })
+  system: {
+    aiFaces: number;
+    backgrounds: number;
+    poses: number;
+    categories: number;
+    industries: number;
+    themes: number;
+  };
+
+  @ApiProperty({ description: 'General statistics (credits, payments)', type: GeneralStatisticsDto })
+  general: GeneralStatisticsDto;
+}
+

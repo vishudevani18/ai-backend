@@ -79,6 +79,7 @@ export class WebAppProfileService {
       profileImage: user.profileImage,
       address: addressDto,
       business: businessDto,
+      credits: user.credits,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     });
@@ -269,6 +270,7 @@ export class WebAppProfileService {
       profileImage: userWithRelations.profileImage,
       address: addressDto,
       business: businessDto,
+      credits: userWithRelations.credits,
       createdAt: userWithRelations.createdAt,
       updatedAt: userWithRelations.updatedAt,
     });

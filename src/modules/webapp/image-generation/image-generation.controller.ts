@@ -1,16 +1,17 @@
-import { Controller, Post, Body, HttpCode, HttpStatus, Req, UseGuards } from '@nestjs/common';
+import { Controller, Post, Body, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
 import { Roles } from '../../../common/decorators/roles.decorator';
 import { UserRole } from '../../../database/entities/user.entity';
+import { CurrentUser } from '../../../common/decorators/current-user.decorator';
+import { JwtUser } from '../../../common/types/jwt-user.type';
 import { ImageGenerationService } from './image-generation.service';
 import { GenerateImageDto } from './dto/generate-image.dto';
 import { GenerateImageResponseDto } from './dto/generate-image-response.dto';
 import { GenerateBulkImageDto } from './dto/generate-bulk-image.dto';
 import { GenerateBulkImageResponseDto } from './dto/generate-bulk-image-response.dto';
 import { ResponseUtil } from '../../../common/utils/response.util';
-import { Request } from 'express';
 
 @ApiTags('1. WebApp - Image Generation')
 @Controller('webapp')
@@ -49,8 +50,11 @@ export class ImageGenerationController {
     status: 404,
     description: 'One or more reference IDs not found',
   })
-  async generateImage(@Body() dto: GenerateImageDto) {
-    const { imageUrl, expiresAt } = await this.imageGenerationService.generateImage(dto);
+  async generateImage(@CurrentUser() user: JwtUser, @Body() dto: GenerateImageDto) {
+    if (!user || !user.id) {
+      throw new Error('User not found in request');
+    }
+    const { imageUrl, expiresAt } = await this.imageGenerationService.generateImage(dto, user.id);
 
     const response: GenerateImageResponseDto = {
       success: true,
@@ -91,13 +95,11 @@ export class ImageGenerationController {
     status: 404,
     description: 'One or more reference IDs not found',
   })
-  async generateBulkImage(@Body() dto: GenerateBulkImageDto, @Req() req?: Request) {
-    // Extract user ID from request if available (for tracking)
-    // Using type assertion since Request type doesn't include user/apiUser by default
-    const request = req as any;
-    const userId = request?.user?.id || request?.apiUser?.userId || undefined;
-
-    const results = await this.imageGenerationService.generateBulkImage(dto, userId);
+  async generateBulkImage(@CurrentUser() user: JwtUser, @Body() dto: GenerateBulkImageDto) {
+    if (!user || !user.id) {
+      throw new Error('User not found in request');
+    }
+    const results = await this.imageGenerationService.generateBulkImage(dto, user.id);
 
     const response: GenerateBulkImageResponseDto = {
       success: true,

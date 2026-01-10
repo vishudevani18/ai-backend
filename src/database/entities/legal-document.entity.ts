@@ -1,4 +1,4 @@
-import { Entity, Column, Unique } from 'typeorm';
+import { Entity, Column, Unique, Index, UpdateDateColumn } from 'typeorm';
 import { BaseEntity } from './base.entity';
 
 export enum LegalDocumentType {
@@ -12,17 +12,15 @@ export class LegalDocument extends BaseEntity {
   @Column({
     type: 'enum',
     enum: LegalDocumentType,
-    unique: true,
   })
-  type: LegalDocumentType;
+  type: LegalDocumentType; // Unique constraint automatically creates index
 
   @Column({ type: 'text' })
   content: string; // HTML content
 
-  @Column({
+  @UpdateDateColumn({
     name: 'last_updated',
     type: 'timestamp with time zone',
-    default: () => 'CURRENT_TIMESTAMP',
   })
   lastUpdated: Date;
 }

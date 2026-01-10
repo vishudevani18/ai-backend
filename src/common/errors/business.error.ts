@@ -38,6 +38,9 @@ export enum ErrorCode {
   FILE_UPLOAD_FAILED = 'FILE_UPLOAD_FAILED',
   FILE_DELETE_FAILED = 'FILE_DELETE_FAILED',
   INVALID_FILE_TYPE = 'FILE_INVALID_TYPE',
+
+  // Credit System
+  INSUFFICIENT_CREDITS = 'CREDIT_INSUFFICIENT_CREDITS',
 }
 
 export class BusinessError extends BaseError {

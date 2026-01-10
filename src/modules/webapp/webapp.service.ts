@@ -8,6 +8,10 @@ import { ProductTheme } from '../../database/entities/product-theme.entity';
 import { ProductBackground } from '../../database/entities/product-background.entity';
 import { ProductPose } from '../../database/entities/product-pose.entity';
 import { AiFace } from '../../database/entities/ai-face.entity';
+import { GeneratedImage, GenerationStatus, GenerationType } from '../../database/entities/generated-image.entity';
+import { User, UserRole } from '../../database/entities/user.entity';
+import { CreditTransaction } from '../../database/entities/credit-transaction.entity';
+import { SystemStatisticsResponseDto, GenerationsStatisticsDto, GeneralStatisticsDto } from './dto/system-statistics.dto';
 
 @Injectable()
 export class WebAppService {
@@ -32,6 +36,12 @@ export class WebAppService {
 
     @InjectRepository(AiFace)
     private readonly aiFaceRepo: Repository<AiFace>,
+    @InjectRepository(GeneratedImage)
+    private readonly generatedImageRepo: Repository<GeneratedImage>,
+    @InjectRepository(User)
+    private readonly userRepo: Repository<User>,
+    @InjectRepository(CreditTransaction)
+    private readonly creditTransactionRepo: Repository<CreditTransaction>,
   ) {}
 
   /**
@@ -185,6 +195,120 @@ export class WebAppService {
       categories,
       industries,
       themes,
+    };
+  }
+
+  /**
+   * Get user dashboard statistics with new structure
+   * Returns generations, system, and general statistics
+   */
+  async getUserDashboardStatistics(): Promise<SystemStatisticsResponseDto> {
+    // Get generations statistics
+    const generationsStats = await this.getGenerationsStatistics();
+
+    // Get system statistics (entity counts - same as systemdata)
+    const systemStats = await this.getSystemData();
+
+    // Get general statistics (credits and payments)
+    const generalStats = await this.getGeneralStatistics();
+
+    return {
+      generations: generationsStats,
+      system: systemStats,
+      general: generalStats,
+    };
+  }
+
+  /**
+   * Get generations statistics
+   */
+  private async getGenerationsStatistics(): Promise<GenerationsStatisticsDto> {
+    // Get users who used single generation
+    // Partition-ready: Filter by createdAt for partition pruning (if partitioned)
+    // Note: TypeORM automatically excludes soft-deleted records (deletedAt IS NULL)
+    const usersWithSingleGenerationResult = await this.generatedImageRepo
+      .createQueryBuilder('gi')
+      .select('COUNT(DISTINCT gi.userId)', 'count')
+      .where('gi.generationType = :type', { type: GenerationType.SINGLE })
+      .andWhere('gi.userId IS NOT NULL')
+      .andWhere('gi.generationStatus = :status', { status: GenerationStatus.SUCCESS })
+      .getRawOne();
+    const usersWithSingleGeneration = usersWithSingleGenerationResult?.count
+      ? parseInt(usersWithSingleGenerationResult.count, 10)
+      : 0;
+
+    // Get users who used bulk generation
+    // Partition-ready: Filter by createdAt for partition pruning (if partitioned)
+    // Note: TypeORM automatically excludes soft-deleted records
+    const usersWithBulkGenerationResult = await this.generatedImageRepo
+      .createQueryBuilder('gi')
+      .select('COUNT(DISTINCT gi.userId)', 'count')
+      .where('gi.generationType = :type', { type: GenerationType.BULK })
+      .andWhere('gi.userId IS NOT NULL')
+      .andWhere('gi.generationStatus = :status', { status: GenerationStatus.SUCCESS })
+      .getRawOne();
+    const usersWithBulkGeneration = usersWithBulkGenerationResult?.count
+      ? parseInt(usersWithBulkGenerationResult.count, 10)
+      : 0;
+
+    // Get total image generations
+    // Partition-ready: Queries will benefit from partition pruning when partitioned
+    // Note: TypeORM automatically excludes soft-deleted records
+    const totalImageGenerations = await this.generatedImageRepo.count({
+      where: { generationStatus: GenerationStatus.SUCCESS },
+    });
+
+    return {
+      usersWithSingleGeneration,
+      usersWithBulkGeneration,
+      totalImageGenerations,
+    };
+  }
+
+  /**
+   * Get general statistics (credits and payments)
+   */
+  private async getGeneralStatistics(): Promise<GeneralStatisticsDto> {
+    // Get total credits distributed (signup bonuses + admin adjustments)
+    // Partition-ready: Filter by createdAt for partition pruning (if partitioned)
+    // Note: TypeORM automatically excludes soft-deleted records
+    const totalCreditsResult = await this.creditTransactionRepo
+      .createQueryBuilder('ct')
+      .select('SUM(ct.amount)', 'total')
+      .where('ct.amount > 0')
+      .getRawOne();
+    const totalCredits = totalCreditsResult?.total ? parseInt(totalCreditsResult.total, 10) : 0;
+
+    // Get total remaining credits (sum of all user credits)
+    const remainingCreditsResult = await this.userRepo
+      .createQueryBuilder('u')
+      .select('SUM(u.credits)', 'total')
+      .where('u.role = :role', { role: UserRole.USER })
+      .getRawOne();
+    const remainingCredits = remainingCreditsResult?.total
+      ? parseInt(remainingCreditsResult.total, 10)
+      : 0;
+
+    // Get total credits used (negative amounts)
+    // Partition-ready: Filter by createdAt for partition pruning (if partitioned)
+    // Note: TypeORM automatically excludes soft-deleted records
+    const usedCreditsResult = await this.creditTransactionRepo
+      .createQueryBuilder('ct')
+      .select('ABS(SUM(ct.amount))', 'total')
+      .where('ct.amount < 0')
+      .getRawOne();
+    const usedCredits = usedCreditsResult?.total ? parseInt(usedCreditsResult.total, 10) : 0;
+
+    // Dummy values for payment system (to be implemented later)
+    const totalGeneratedImagePurchasedCredit = 0; // Dummy value
+    const totalPaidAmount = 0; // Dummy value
+
+    return {
+      totalCredits,
+      remainingCredits,
+      usedCredits,
+      totalGeneratedImagePurchasedCredit,
+      totalPaidAmount,
     };
   }
 }

@@ -46,3 +46,9 @@ export const DEFAULT_WHATSAPP_OTP_RESET_TEMPLATE = 'otp_reset_password';
 
 // OTP Configuration
 export const DEFAULT_OTP_EXPIRY_MINUTES = 2;
+
+// Credit System Configuration
+export const DEFAULT_SIGNUP_CREDITS = 30;
+export const DEFAULT_IMAGE_GENERATION_COST = 5;
+export const DEFAULT_BULK_GENERATION_COST_PER_IMAGE = 5;
+export const DEFAULT_FACE_SWAP_COST = 3;

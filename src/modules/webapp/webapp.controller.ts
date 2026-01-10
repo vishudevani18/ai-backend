@@ -80,4 +80,27 @@ export class WebAppController {
     const data = await this.service.getSystemData();
     return ResponseUtil.success(data, 'System data retrieved successfully');
   }
+
+  @Get('userDashboardStatistics')
+  @ApiOperation({
+    summary: 'Get user dashboard statistics (User only)',
+    description:
+      'Returns comprehensive user dashboard statistics including: generation statistics (users with single/bulk generation, total generations), system statistics (entity counts), and general statistics (credits, payments). Requires USER role authentication.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'User dashboard statistics retrieved successfully',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized - Invalid or missing token',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - USER role required',
+  })
+  async getUserDashboardStatistics() {
+    const data = await this.service.getUserDashboardStatistics();
+    return ResponseUtil.success(data, 'User dashboard statistics retrieved successfully');
+  }
 }

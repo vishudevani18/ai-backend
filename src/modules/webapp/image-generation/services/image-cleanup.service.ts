@@ -40,6 +40,8 @@ export class ImageCleanupService {
    */
   async deleteExpiredImages(): Promise<void> {
     const now = new Date();
+    // Partition-ready: Filter by expiresAt (which correlates with createdAt) for partition pruning
+    // Note: TypeORM automatically excludes soft-deleted records
     const expiredImages = await this.generatedImageRepo.find({
       where: {
         expiresAt: LessThan(now),

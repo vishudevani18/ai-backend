@@ -58,6 +58,12 @@ export class ProfileDto {
   business?: BusinessDto;
 
   @ApiProperty({
+    description: 'Current credit balance',
+    example: 30,
+  })
+  credits: number;
+
+  @ApiProperty({
     description: 'Date and time user was created',
   })
   createdAt: Date;

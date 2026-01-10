@@ -47,10 +47,10 @@ export class UserBusiness extends BaseEntity {
   @Column({ name: 'gst_number', length: 20, nullable: true })
   gstNumber?: string;
 
-  @Column({ name: 'website_url', type: 'text', nullable: true })
+  @Column({ name: 'website_url', type: 'varchar', length: 500, nullable: true })
   websiteUrl?: string;
 
-  @Column({ name: 'business_logo', type: 'text', nullable: true })
+  @Column({ name: 'business_logo', type: 'varchar', length: 500, nullable: true })
   businessLogo?: string;
 
   @OneToOne(() => User, user => user.business, { onDelete: 'CASCADE' })

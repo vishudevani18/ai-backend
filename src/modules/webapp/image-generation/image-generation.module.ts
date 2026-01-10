@@ -13,6 +13,7 @@ import { ProductBackground } from '../../../database/entities/product-background
 import { AiFace } from '../../../database/entities/ai-face.entity';
 import { GeneratedImage } from '../../../database/entities/generated-image.entity';
 import { StorageModule } from '../../../storage/storage.module';
+import { CreditsModule } from '../../credits/credits.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { StorageModule } from '../../../storage/storage.module';
       GeneratedImage,
     ]),
     StorageModule,
+    CreditsModule,
   ],
   controllers: [ImageGenerationController],
   providers: [ImageGenerationService, GeminiImageService, ImageCleanupService],

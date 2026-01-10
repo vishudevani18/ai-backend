@@ -11,6 +11,7 @@ import { ProductTheme } from '../../../database/entities/product-theme.entity';
 import { ProductBackground } from '../../../database/entities/product-background.entity';
 import { AiFace } from '../../../database/entities/ai-face.entity';
 import { User, UserRole, UserStatus } from '../../../database/entities/user.entity';
+import { CreditTransaction } from '../../../database/entities/credit-transaction.entity';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { User, UserRole, UserStatus } from '../../../database/entities/user.enti
       ProductBackground,
       AiFace,
       User,
+      CreditTransaction,
     ]),
   ],
   controllers: [DashboardController],

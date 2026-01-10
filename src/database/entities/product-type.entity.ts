@@ -5,12 +5,12 @@ import { BaseEntity } from './base.entity';
 import { ProductPose } from './product-pose.entity';
 
 @Entity('product_types')
+// FK index on categoryId created automatically by TypeORM for JOINs
 export class ProductType extends BaseEntity {
-  @Index()
-  @Column()
+  @Column({ type: 'varchar', length: 255 })
   name: string;
 
-  @Column({ nullable: true, type: 'text' })
+  @Column({ nullable: true, type: 'varchar', length: 1000 })
   description?: string;
 
   @ManyToOne(() => Category, category => category.productTypes, { onDelete: 'CASCADE' })

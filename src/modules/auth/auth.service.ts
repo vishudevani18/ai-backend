@@ -33,6 +33,8 @@ import {
 import { ProfileDto } from './dto/profile.dto';
 import { OtpService } from './services/otp.service';
 import { MessagingService } from './services/messaging.service';
+import { CreditsService } from '../credits/credits.service';
+import { CreditOperationType } from '../../database/entities/credit-transaction.entity';
 import * as dayjs from 'dayjs';
 
 @Injectable()
@@ -54,6 +56,7 @@ export class AuthService {
     private config: ConfigService,
     private otpService: OtpService,
     private messagingService: MessagingService,
+    private creditsService: CreditsService,
   ) {}
 
   async login(dto: LoginDto): Promise<AuthResponseDto> {
@@ -100,32 +103,59 @@ export class AuthService {
     const tokens = await this.generateTokens(user);
     await this.updateRefreshToken(user.id, tokens.refreshToken);
 
-    // 7. Map business entity → DTO
-    const businessDto = user.business
+    // 7. Get user with relations for complete profile
+    const userWithRelations = await this.userRepo.findOne({
+      where: { id: user.id },
+      relations: ['addresses', 'business'],
+    });
+
+    // 8. Map business entity → DTO
+    const businessDto = userWithRelations?.business
       ? {
-          businessName: user.business.businessName,
-          businessType: user.business.businessType,
-          businessSegment: user.business.businessSegment,
-          businessDescription: user.business.businessDescription,
-          gstNumber: user.business.gstNumber,
-          websiteUrl: user.business.websiteUrl,
-          businessLogo: user.business.businessLogo,
+          businessName: userWithRelations.business.businessName,
+          businessType: userWithRelations.business.businessType,
+          businessSegment: userWithRelations.business.businessSegment,
+          businessDescription: userWithRelations.business.businessDescription,
+          gstNumber: userWithRelations.business.gstNumber,
+          websiteUrl: userWithRelations.business.websiteUrl,
+          businessLogo: userWithRelations.business.businessLogo,
         }
       : undefined;
 
-    // 8. Map User → ProfileDto (safe mapping)
+    // 9. Get the default address (single object, same as business)
+    const defaultAddress = userWithRelations?.addresses?.find(
+      (addr) => addr.addressType === 'default',
+    );
+
+    // 10. Transform address to AddressDto format (single object)
+    const addressDto = defaultAddress
+      ? {
+          addressType: defaultAddress.addressType,
+          street: defaultAddress.street,
+          city: defaultAddress.city,
+          state: defaultAddress.state,
+          zipcode: defaultAddress.zipcode,
+          country: defaultAddress.country,
+        }
+      : undefined;
+
+    // 11. Map User → ProfileDto (safe mapping)
     const profile = new ProfileDto({
-      id: user.id,
-      email: user.email,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      phone: user.phone,
-      role: user.role,
-      status: user.status,
-      profileImage: user.profileImage,
+      id: userWithRelations.id,
+      email: userWithRelations.email,
+      firstName: userWithRelations.firstName,
+      lastName: userWithRelations.lastName,
+      phone: userWithRelations.phone,
+      emailVerified: userWithRelations.emailVerified,
+      phoneVerified: userWithRelations.phoneVerified,
+      role: userWithRelations.role,
+      status: userWithRelations.status,
+      profileImage: userWithRelations.profileImage,
+      address: addressDto,
       business: businessDto,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt,
+      credits: userWithRelations.credits,
+      createdAt: userWithRelations.createdAt,
+      updatedAt: userWithRelations.updatedAt,
     });
 
     // 9. Final response
@@ -171,18 +201,59 @@ export class AuthService {
     const tokens = await this.generateTokens(user);
     await this.updateRefreshToken(user.id, tokens.refreshToken);
 
-    // 6. Map User → ProfileDto
+    // 6. Get user with relations for complete profile
+    const userWithRelations = await this.userRepo.findOne({
+      where: { id: user.id },
+      relations: ['addresses', 'business'],
+    });
+
+    // 7. Map business entity → DTO
+    const businessDto = userWithRelations?.business
+      ? {
+          businessName: userWithRelations.business.businessName,
+          businessType: userWithRelations.business.businessType,
+          businessSegment: userWithRelations.business.businessSegment,
+          businessDescription: userWithRelations.business.businessDescription,
+          gstNumber: userWithRelations.business.gstNumber,
+          websiteUrl: userWithRelations.business.websiteUrl,
+          businessLogo: userWithRelations.business.businessLogo,
+        }
+      : undefined;
+
+    // 8. Get the default address (single object, same as business)
+    const defaultAddress = userWithRelations?.addresses?.find(
+      (addr) => addr.addressType === 'default',
+    );
+
+    // 9. Transform address to AddressDto format (single object)
+    const addressDto = defaultAddress
+      ? {
+          addressType: defaultAddress.addressType,
+          street: defaultAddress.street,
+          city: defaultAddress.city,
+          state: defaultAddress.state,
+          zipcode: defaultAddress.zipcode,
+          country: defaultAddress.country,
+        }
+      : undefined;
+
+    // 10. Map User → ProfileDto
     const profile = new ProfileDto({
-      id: user.id,
-      email: user.email,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      phone: user.phone,
-      role: user.role,
-      status: user.status,
-      profileImage: user.profileImage,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt,
+      id: userWithRelations.id,
+      email: userWithRelations.email,
+      firstName: userWithRelations.firstName,
+      lastName: userWithRelations.lastName,
+      phone: userWithRelations.phone,
+      emailVerified: userWithRelations.emailVerified,
+      phoneVerified: userWithRelations.phoneVerified,
+      role: userWithRelations.role,
+      status: userWithRelations.status,
+      profileImage: userWithRelations.profileImage,
+      address: addressDto,
+      business: businessDto,
+      credits: userWithRelations.credits,
+      createdAt: userWithRelations.createdAt,
+      updatedAt: userWithRelations.updatedAt,
     });
 
     // 7. Final response
@@ -283,6 +354,7 @@ export class AuthService {
       profileImage: user.profileImage,
       address: addressDto,
       business: businessDto,
+      credits: user.credits,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     });
@@ -525,8 +597,23 @@ export class AuthService {
 
       await query.commitTransaction();
 
+      // Add default signup credits after transaction commit
+      const defaultCredits = this.config.get<number>('app.credits.defaultSignupCredits') || 30;
+      await this.creditsService.addCredits(
+        saved.id,
+        defaultCredits,
+        CreditOperationType.SIGNUP_BONUS,
+        `Welcome bonus: ${defaultCredits} credits on signup`,
+      );
+
       const tokens = await this.generateTokens(saved);
       await this.updateRefreshToken(saved.id, tokens.refreshToken);
+
+      // Reload user to get updated credits
+      const userWithCredits = await this.userRepo.findOne({
+        where: { id: saved.id },
+        select: ['id', 'credits'],
+      });
 
       const profile = new ProfileDto({
         id: saved.id,
@@ -538,6 +625,7 @@ export class AuthService {
         status: saved.status,
         profileImage: saved.profileImage,
         phoneVerified: saved.phoneVerified,
+        credits: userWithCredits?.credits || defaultCredits,
         createdAt: saved.createdAt,
         updatedAt: saved.updatedAt,
         business: business
@@ -557,6 +645,159 @@ export class AuthService {
         ...tokens,
         user: profile,
       };
+    } catch (err) {
+      await query.rollbackTransaction();
+      throw err;
+    } finally {
+      await query.release();
+    }
+  }
+
+  // ========================================================
+  // ADMIN CREATE USER (BYPASS OTP)
+  // ========================================================
+  async createUserByAdmin(dto: {
+    email: string;
+    phone: string;
+    password: string;
+    firstName: string;
+    lastName?: string;
+    address?: any;
+    business?: any;
+  }): Promise<ProfileDto> {
+    const { email, phone, password, firstName, lastName, address, business } = dto;
+
+    // Check if email already exists
+    const emailExists = await this.userRepo.findOne({ where: { email } });
+    if (emailExists) {
+      throw new ConflictException('User with this email already exists');
+    }
+
+    // Check if phone already exists
+    const phoneExists = await this.userRepo.findOne({ where: { phone } });
+    if (phoneExists) {
+      throw new ConflictException('User with this phone number already exists');
+    }
+
+    const query = this.dataSource.createQueryRunner();
+    await query.connect();
+    await query.startTransaction();
+
+    try {
+      const passwordHash = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
+
+      const user = this.userRepo.create({
+        email,
+        passwordHash,
+        firstName,
+        lastName: lastName || null,
+        phone,
+        role: UserRole.USER,
+        status: UserStatus.ACTIVE,
+        phoneVerified: true, // Admin creates user, so phone is considered verified
+        emailVerified: false, // Email verification can be done later if needed
+      });
+
+      const saved = await query.manager.save(User, user);
+
+      if (address) {
+        await query.manager.save(
+          UserAddress,
+          this.addressRepo.create({
+            userId: saved.id,
+            addressType: address.addressType || 'default',
+            street: address.street || null,
+            city: address.city || null,
+            state: address.state || null,
+            zipcode: address.zipcode || null,
+            country: address.country || DEFAULT_ADDRESS_COUNTRY,
+          }),
+        );
+      }
+
+      if (business) {
+        await query.manager.save(
+          UserBusiness,
+          this.businessRepo.create({
+            userId: saved.id,
+            businessName: business.businessName || null,
+            businessType: business.businessType || null,
+            businessSegment: business.businessSegment || null,
+            businessDescription: business.businessDescription || null,
+            gstNumber: business.gstNumber || null,
+            websiteUrl: business.websiteUrl || null,
+            businessLogo: business.businessLogo || null,
+          }),
+        );
+      }
+
+      await query.commitTransaction();
+
+      // Add default signup credits after transaction commit
+      const defaultCredits = this.config.get<number>('app.credits.defaultSignupCredits') || 30;
+      await this.creditsService.addCredits(
+        saved.id,
+        defaultCredits,
+        CreditOperationType.SIGNUP_BONUS,
+        `Welcome bonus: ${defaultCredits} credits on account creation by admin`,
+      );
+
+      // Reload user with relations and credits
+      const userWithRelations = await this.userRepo.findOne({
+        where: { id: saved.id },
+        relations: ['addresses', 'business'],
+      });
+
+      const userWithCredits = await this.userRepo.findOne({
+        where: { id: saved.id },
+        select: ['id', 'credits'],
+      });
+
+      // Get the default address
+      const defaultAddress = userWithRelations?.addresses?.find(
+        (addr) => addr.addressType === 'default',
+      );
+
+      const addressDto = defaultAddress
+        ? {
+            addressType: defaultAddress.addressType,
+            street: defaultAddress.street,
+            city: defaultAddress.city,
+            state: defaultAddress.state,
+            zipcode: defaultAddress.zipcode,
+            country: defaultAddress.country,
+          }
+        : undefined;
+
+      const businessDto = userWithRelations?.business
+        ? {
+            businessName: userWithRelations.business.businessName,
+            businessType: userWithRelations.business.businessType,
+            businessSegment: userWithRelations.business.businessSegment,
+            businessDescription: userWithRelations.business.businessDescription,
+            gstNumber: userWithRelations.business.gstNumber,
+            websiteUrl: userWithRelations.business.websiteUrl,
+            businessLogo: userWithRelations.business.businessLogo,
+          }
+        : undefined;
+
+      return new ProfileDto({
+        id: saved.id,
+        email: saved.email,
+        firstName: saved.firstName,
+        lastName: saved.lastName,
+        phone: saved.phone,
+        emailVerified: saved.emailVerified,
+        phoneVerified: saved.phoneVerified,
+        role: saved.role,
+        status: saved.status,
+        profileImage: saved.profileImage,
+        address: addressDto,
+        business: businessDto,
+        credits: userWithCredits?.credits || defaultCredits,
+        createdAt: saved.createdAt,
+        updatedAt: saved.updatedAt,
+      });
     } catch (err) {
       await query.rollbackTransaction();
       throw err;

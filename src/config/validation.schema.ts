@@ -17,6 +17,10 @@ import {
   DEFAULT_CSRF_ENABLED,
   DEFAULT_HELMET_ENABLED,
   DEFAULT_OTP_EXPIRY_MINUTES,
+  DEFAULT_SIGNUP_CREDITS,
+  DEFAULT_IMAGE_GENERATION_COST,
+  DEFAULT_BULK_GENERATION_COST_PER_IMAGE,
+  DEFAULT_FACE_SWAP_COST,
 } from 'src/common/constants/config.constants';
 
 export const validationSchema = Joi.object({
@@ -84,4 +88,10 @@ export const validationSchema = Joi.object({
   GCS_BUCKET_NAME: Joi.string().optional(),
   GCS_PROJECT_ID: Joi.string().optional(),
   GCS_CDN_BASE_URL: Joi.string().uri().optional(),
+
+  // Credit System Configuration
+  DEFAULT_SIGNUP_CREDITS: Joi.number().default(DEFAULT_SIGNUP_CREDITS),
+  IMAGE_GENERATION_COST: Joi.number().default(DEFAULT_IMAGE_GENERATION_COST),
+  BULK_GENERATION_COST_PER_IMAGE: Joi.number().default(DEFAULT_BULK_GENERATION_COST_PER_IMAGE),
+  FACE_SWAP_COST: Joi.number().default(DEFAULT_FACE_SWAP_COST),
 });
