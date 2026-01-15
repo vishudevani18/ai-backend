@@ -22,17 +22,31 @@ export class ProductPosesService {
   ) {}
 
   async create(dto: CreateProductPoseDto, file: Express.Multer.File) {
-    const productType = await this.productTypeRepo.findOne({
-      where: { id: dto.productTypeId },
+    if (!dto.productTypeIds || dto.productTypeIds.length === 0) {
+      throw new BadRequestException('At least one product type ID is required');
+    }
+
+    const productTypes = await this.productTypeRepo.find({
+      where: { id: In(dto.productTypeIds) },
     });
-    if (!productType) throw new NotFoundException('Product type not found');
+    
+    if (productTypes.length !== dto.productTypeIds.length) {
+      throw new NotFoundException('One or more product types not found');
+    }
 
     if (!file) throw new BadRequestException('Image file is required');
 
-    const exists = await this.repo.findOne({
-      where: { name: dto.name, productTypeId: dto.productTypeId },
-    });
-    if (exists) throw new BadRequestException('Product pose already exists for this product type');
+    // Check if pose with same name exists for any of the product types
+    const existingPose = await this.repo
+      .createQueryBuilder('pose')
+      .innerJoin('pose.productTypes', 'pt')
+      .where('pose.name = :name', { name: dto.name })
+      .andWhere('pt.id IN (:...productTypeIds)', { productTypeIds: dto.productTypeIds })
+      .getOne();
+    
+    if (existingPose) {
+      throw new BadRequestException('Product pose with this name already exists for one or more of the specified product types');
+    }
 
     const productBackgrounds = dto.productBackgroundIds
       ? await this.productBackgroundRepo.find({
@@ -41,9 +55,11 @@ export class ProductPosesService {
       : [];
 
     // Generate temporary ID for path, will update after save
+    // Use first product type ID for GCS path structure
     const tempId = uuidv4();
     const fileExtension = file.originalname.split('.').pop() || 'jpg';
-    const gcsPath = `product-poses/${dto.productTypeId}/${tempId}/image.${fileExtension}`;
+    const firstProductTypeId = dto.productTypeIds[0];
+    const gcsPath = `product-poses/${firstProductTypeId}/${tempId}/image.${fileExtension}`;
 
     // Upload as public file
     const imageUrl = await this.gcsStorageService.uploadPublicFile(
@@ -55,10 +71,9 @@ export class ProductPosesService {
     const entity = this.repo.create({
       name: dto.name,
       description: dto.description,
-      productTypeId: dto.productTypeId,
       imageUrl,
       imagePath: gcsPath,
-      productType,
+      productTypes,
       productBackgrounds,
     });
 
@@ -66,7 +81,7 @@ export class ProductPosesService {
 
     // Update GCS path with actual ID if different (overwrite with correct path)
     if (saved.id !== tempId) {
-      const newPath = `product-poses/${dto.productTypeId}/${saved.id}/image.${fileExtension}`;
+      const newPath = `product-poses/${firstProductTypeId}/${saved.id}/image.${fileExtension}`;
       const newUrl = await this.gcsStorageService.uploadPublicFile(file.buffer, newPath, file.mimetype);
       
       // Delete old file if path changed
@@ -107,8 +122,8 @@ export class ProductPosesService {
 
     const queryBuilder = this.repo
       .createQueryBuilder('pose')
-      .leftJoinAndSelect('pose.productType', 'productType')
-      .leftJoinAndSelect('productType.category', 'category')
+      .leftJoinAndSelect('pose.productTypes', 'productTypes')
+      .leftJoinAndSelect('productTypes.category', 'category')
       .leftJoinAndSelect('pose.productBackgrounds', 'productBackgrounds');
 
     if (includeDeleted) {
@@ -116,7 +131,9 @@ export class ProductPosesService {
     }
 
     if (productTypeId) {
-      queryBuilder.andWhere('pose.productTypeId = :productTypeId', { productTypeId });
+      queryBuilder
+        .innerJoin('pose.productTypes', 'filterPt')
+        .andWhere('filterPt.id = :productTypeId', { productTypeId });
     }
 
     if (search) {
@@ -145,7 +162,7 @@ export class ProductPosesService {
   async findOne(id: string) {
     const pose = await this.repo.findOne({
       where: { id },
-      relations: ['productType', 'productType.category', 'productBackgrounds'],
+      relations: ['productTypes', 'productTypes.category', 'productBackgrounds'],
     });
     if (!pose) throw new NotFoundException('Product pose not found');
     
@@ -159,17 +176,24 @@ export class ProductPosesService {
   async update(id: string, dto: UpdateProductPoseDto, file?: Express.Multer.File) {
     const pose = await this.repo.findOne({
       where: { id },
-      relations: ['productType', 'productType.category', 'productBackgrounds'],
+      relations: ['productTypes', 'productTypes.category', 'productBackgrounds'],
     });
     if (!pose) throw new NotFoundException('Product pose not found');
 
-    if (dto.productTypeId) {
-      const newPt = await this.productTypeRepo.findOne({
-        where: { id: dto.productTypeId },
+    if (dto.productTypeIds !== undefined) {
+      if (dto.productTypeIds.length === 0) {
+        throw new BadRequestException('At least one product type ID is required');
+      }
+      
+      const newProductTypes = await this.productTypeRepo.find({
+        where: { id: In(dto.productTypeIds) },
       });
-      if (!newPt) throw new NotFoundException('New product type not found');
-      pose.productType = newPt;
-      pose.productTypeId = dto.productTypeId;
+      
+      if (newProductTypes.length !== dto.productTypeIds.length) {
+        throw new NotFoundException('One or more product types not found');
+      }
+      
+      pose.productTypes = newProductTypes;
     }
 
     if (dto.productBackgroundIds !== undefined) {
@@ -181,25 +205,32 @@ export class ProductPosesService {
     }
 
     if (dto.name) {
-      const duplicate = await this.repo.findOne({
-        where: {
-          name: dto.name,
-          productTypeId: pose.productTypeId,
-        },
-      });
-      if (duplicate && duplicate.id !== pose.id) {
-        throw new BadRequestException('Product pose already exists for this product type');
+      // Check if pose with same name exists for any of the current/updated product types
+      const productTypeIds = dto.productTypeIds || pose.productTypes.map(pt => pt.id);
+      const duplicate = await this.repo
+        .createQueryBuilder('pose')
+        .innerJoin('pose.productTypes', 'pt')
+        .where('pose.name = :name', { name: dto.name })
+        .andWhere('pt.id IN (:...productTypeIds)', { productTypeIds })
+        .andWhere('pose.id != :id', { id })
+        .getOne();
+      
+      if (duplicate) {
+        throw new BadRequestException('Product pose with this name already exists for one or more of the specified product types');
       }
     }
 
     // Handle image upload if provided
     if (file) {
       // Use overwriting strategy: reuse same path if exists, otherwise create new
-      // If productTypeId changed, we need a new path
       const fileExtension = file.originalname.split('.').pop() || 'jpg';
-      const gcsPath = pose.imagePath && pose.productTypeId === dto.productTypeId
-        ? pose.imagePath // Reuse existing path (overwrite) if productTypeId unchanged
-        : `product-poses/${pose.productTypeId}/${id}/image.${fileExtension}`; // Create new path
+      // Use first product type ID for path (or existing path structure)
+      const firstProductTypeId = pose.productTypes.length > 0 ? pose.productTypes[0].id : null;
+      const gcsPath = pose.imagePath && firstProductTypeId && pose.imagePath.includes(firstProductTypeId)
+        ? pose.imagePath // Reuse existing path (overwrite) if it contains the first product type ID
+        : firstProductTypeId 
+          ? `product-poses/${firstProductTypeId}/${id}/image.${fileExtension}` // Create new path
+          : `product-poses/${id}/image.${fileExtension}`; // Fallback if no product types
 
       // Upload as public file (will overwrite if path exists)
       const imageUrl = await this.gcsStorageService.uploadPublicFile(

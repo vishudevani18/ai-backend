@@ -1,4 +1,4 @@
-import { Entity, Column, ManyToOne, ManyToMany, OneToMany, Index, JoinColumn } from 'typeorm';
+import { Entity, Column, ManyToOne, ManyToMany, Index, JoinColumn } from 'typeorm';
 import { Category } from './category.entity';
 import { ProductTheme } from './product-theme.entity';
 import { BaseEntity } from './base.entity';
@@ -23,6 +23,6 @@ export class ProductType extends BaseEntity {
   @ManyToMany(() => ProductTheme, pt => pt.productTypes)
   productThemes: ProductTheme[];
 
-  @OneToMany(() => ProductPose, pose => pose.productType)
+  @ManyToMany(() => ProductPose, pose => pose.productTypes)
   productPoses: ProductPose[];
 }

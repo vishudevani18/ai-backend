@@ -5,7 +5,7 @@ import { OtpPurpose } from '../../common/constants/auth.constants';
 @Entity('otps')
 @Index(['phone', 'purpose', 'expiresAt'])
 @Index(['sessionToken'], { where: 'session_token IS NOT NULL' })
-@Index(['expiresAt'], { where: 'expires_at < NOW()' })
+@Index(['expiresAt']) // Index for cleanup queries (expired OTP filtering handled in application code)
 @Check(`"attempts" >= 0`)
 @Check(`"phone" ~ '^\\+91[6-9]\\d{9}$'`)
 export class Otp extends BaseEntity {
@@ -24,7 +24,6 @@ export class Otp extends BaseEntity {
   })
   purpose: OtpPurpose;
 
-  @Index()
   @Column({ name: 'expires_at', type: 'timestamp with time zone' })
   expiresAt: Date;
 

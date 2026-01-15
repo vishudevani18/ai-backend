@@ -22,7 +22,7 @@ export enum GenerationType {
 @Entity('generated_images')
 @Index(['userId', 'generationStatus'], { where: 'user_id IS NOT NULL' })
 @Index(['userId', 'createdAt'], { where: 'user_id IS NOT NULL' }) // For user history queries and partition pruning
-@Index(['expiresAt'], { where: 'expires_at < NOW()' })
+@Index(['expiresAt']) // Index for cleanup queries (expired images filtering handled in application code)
 @Index(['generationType', 'generationStatus', 'createdAt']) // Partition-ready: includes createdAt
 @Check(`"expires_at" IS NULL OR "expires_at" > "created_at"`)
 @Check(`"generation_time_ms" IS NULL OR "generation_time_ms" >= 0`)

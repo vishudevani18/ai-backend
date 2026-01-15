@@ -40,7 +40,7 @@ export class ProductPosesController {
   @Get()
   @ApiOperation({
     summary: 'Get all product poses with pagination, filtering, and sorting',
-    description: 'Filter by productTypeId, search by name. Use includeDeleted=true to show only soft-deleted items. Sort by createdAt (default), updatedAt, name. Default: 20 items per page, sorted by createdAt DESC',
+    description: 'Filter by productTypeId (returns poses that have this product type), search by name. Use includeDeleted=true to show only soft-deleted items. Sort by createdAt (default), updatedAt, name. Default: 20 items per page, sorted by createdAt DESC',
   })
   @ApiQuery({ name: 'includeDeleted', required: false, type: Boolean, description: 'Show only soft-deleted items (default: false - shows only active items)', example: false })
   @ApiResponse({ status: 200, description: 'Product poses retrieved successfully' })

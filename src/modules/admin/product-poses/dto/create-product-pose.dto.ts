@@ -21,9 +21,28 @@ export class CreateProductPoseDto {
   })
   image: any; // File will be handled by FileInterceptor
 
-  @ApiProperty({ example: 'uuid-of-product-type', description: 'Associated product type ID' })
-  @IsUUID()
-  productTypeId: string;
+  @ApiProperty({ 
+    example: ['uuid-of-product-type'], 
+    description: 'Array of product type IDs. Can be sent as JSON string in multipart/form-data: ["uuid1", "uuid2"]',
+    type: [String]
+  })
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      try {
+        return JSON.parse(value);
+      } catch {
+        // If not valid JSON, treat as single value or comma-separated
+        if (value.includes(',')) {
+          return value.split(',').map((v: string) => v.trim());
+        }
+        return [value];
+      }
+    }
+    return Array.isArray(value) ? value : [value];
+  })
+  @IsArray()
+  @IsUUID('all', { each: true })
+  productTypeIds: string[];
 
   @ApiProperty({ 
     example: ['uuid-of-product-background'], 
