@@ -54,4 +54,3 @@ export class SubmitContactDto {
   @MaxLength(5000, { message: 'Message must not exceed 5000 characters' })
   message: string;
 }
-

@@ -20,7 +20,14 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { ProductBackgroundsService } from './product-backgrounds.service';
 import { CreateProductBackgroundDto } from './dto/create-product-background.dto';
 import { UpdateProductBackgroundDto } from './dto/update-product-background.dto';
-import { ApiOperation, ApiQuery, ApiResponse, ApiTags, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
+import {
+  ApiOperation,
+  ApiQuery,
+  ApiResponse,
+  ApiTags,
+  ApiBearerAuth,
+  ApiConsumes,
+} from '@nestjs/swagger';
 import { FileValidationPipe } from '../../../common/pipes/file-validation.pipe';
 import { ResponseUtil } from '@/common/utils/response.util';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
@@ -40,9 +47,16 @@ export class ProductBackgroundsController {
   @Get()
   @ApiOperation({
     summary: 'Get all product backgrounds with pagination, filtering, and sorting',
-    description: 'Filter by productThemeId, search by name. Use includeDeleted=true to show only soft-deleted items. Sort by createdAt (default), updatedAt, name. Default: 20 items per page, sorted by createdAt DESC',
+    description:
+      'Filter by productThemeId, search by name. Use includeDeleted=true to show only soft-deleted items. Sort by createdAt (default), updatedAt, name. Default: 20 items per page, sorted by createdAt DESC',
   })
-  @ApiQuery({ name: 'includeDeleted', required: false, type: Boolean, description: 'Show only soft-deleted items (default: false - shows only active items)', example: false })
+  @ApiQuery({
+    name: 'includeDeleted',
+    required: false,
+    type: Boolean,
+    description: 'Show only soft-deleted items (default: false - shows only active items)',
+    example: false,
+  })
   @ApiResponse({ status: 200, description: 'Product backgrounds retrieved successfully' })
   async findAll(@Query() filters: FilterProductBackgroundsDto) {
     const { backgrounds, total } = await this.service.findAll(filters);
@@ -88,7 +102,9 @@ export class ProductBackgroundsController {
   async update(
     @Param('id') id: string,
     @Body() dto: UpdateProductBackgroundDto,
-    @UploadedFile(new ParseFilePipe({ validators: [new FileValidationPipe()], fileIsRequired: false }))
+    @UploadedFile(
+      new ParseFilePipe({ validators: [new FileValidationPipe()], fileIsRequired: false }),
+    )
     file?: Express.Multer.File,
   ) {
     const result = await this.service.update(id, dto, file);
@@ -97,7 +113,10 @@ export class ProductBackgroundsController {
 
   @Patch(':id/soft-delete')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Toggle soft delete status for a product background (restores if deleted, deletes if active)' })
+  @ApiOperation({
+    summary:
+      'Toggle soft delete status for a product background (restores if deleted, deletes if active)',
+  })
   @ApiResponse({ status: 200, description: 'Product background status toggled successfully' })
   async softDelete(@Param('id') id: string) {
     const result = await this.service.softDelete(id);

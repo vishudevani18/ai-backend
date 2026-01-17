@@ -164,4 +164,3 @@ export class DashboardStatsResponseDto {
   @ApiProperty({ description: 'Credit system statistics', type: CreditsStatsDto })
   credits: CreditsStatsDto;
 }
-

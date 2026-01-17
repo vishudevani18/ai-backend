@@ -1,14 +1,26 @@
 import { ApiProperty } from '@nestjs/swagger';
 
 export class GenerationsStatisticsDto {
-  @ApiProperty({ description: 'Number of users who generated images using single generation' })
-  usersWithSingleGeneration: number;
-
-  @ApiProperty({ description: 'Number of users who generated images using bulk/multi-image generation' })
-  usersWithBulkGeneration: number;
-
   @ApiProperty({ description: 'Total number of image generations' })
   totalImageGenerations: number;
+
+  @ApiProperty({
+    description:
+      'Number of times single generation was used (same as number of images, since each single generation = 1 image)',
+  })
+  singleGenerations: number;
+
+  @ApiProperty({
+    description:
+      'Number of times bulk/catalog generation was used (number of bulk generation requests)',
+  })
+  bulkGenerationRequests: number;
+
+  @ApiProperty({
+    description:
+      'Number of images generated via bulk/catalog generation (total images from all bulk requests)',
+  })
+  bulkGenerations: number;
 }
 
 export class GeneralStatisticsDto {
@@ -21,10 +33,15 @@ export class GeneralStatisticsDto {
   @ApiProperty({ description: 'Total credits used by all users' })
   usedCredits: number;
 
-  @ApiProperty({ description: 'Total credits purchased for image generation (dummy value until payment integration)' })
+  @ApiProperty({
+    description:
+      'Total credits purchased for image generation (dummy value until payment integration)',
+  })
   totalGeneratedImagePurchasedCredit: number;
 
-  @ApiProperty({ description: 'Total paid amount in the system (dummy value until payment integration)' })
+  @ApiProperty({
+    description: 'Total paid amount in the system (dummy value until payment integration)',
+  })
   totalPaidAmount: number;
 }
 
@@ -42,7 +59,9 @@ export class SystemStatisticsResponseDto {
     themes: number;
   };
 
-  @ApiProperty({ description: 'General statistics (credits, payments)', type: GeneralStatisticsDto })
+  @ApiProperty({
+    description: 'General statistics (credits, payments)',
+    type: GeneralStatisticsDto,
+  })
   general: GeneralStatisticsDto;
 }
-

@@ -34,7 +34,7 @@ export class ProductThemesService {
       const tempId = uuidv4();
       const fileExtension = file.originalname.split('.').pop() || 'jpg';
       const gcsPath = `product-themes/${tempId}/image.${fileExtension}`;
-      
+
       // Upload as public file
       imageUrl = await this.gcsStorageService.uploadPublicFile(file.buffer, gcsPath, file.mimetype);
       imagePath = gcsPath;
@@ -53,8 +53,12 @@ export class ProductThemesService {
     // Update GCS path with actual ID if different (overwrite with correct path)
     if (file && saved.id !== imagePath?.split('/')[1]) {
       const newPath = `product-themes/${saved.id}/image.${file.originalname.split('.').pop() || 'jpg'}`;
-      const newUrl = await this.gcsStorageService.uploadPublicFile(file.buffer, newPath, file.mimetype);
-      
+      const newUrl = await this.gcsStorageService.uploadPublicFile(
+        file.buffer,
+        newPath,
+        file.mimetype,
+      );
+
       // Delete old file if path changed
       if (imagePath && imagePath !== newPath) {
         try {
@@ -63,7 +67,7 @@ export class ProductThemesService {
           console.error('Failed to delete old image:', error);
         }
       }
-      
+
       saved.imageUrl = newUrl;
       saved.imagePath = newPath;
       return this.repo.save(saved);
@@ -141,7 +145,7 @@ export class ProductThemesService {
     if (file) {
       // Use overwriting strategy: reuse same path if exists, otherwise create new
       const fileExtension = file.originalname.split('.').pop() || 'jpg';
-      const gcsPath = productTheme.imagePath 
+      const gcsPath = productTheme.imagePath
         ? productTheme.imagePath // Reuse existing path (overwrite)
         : `product-themes/${id}/image.${fileExtension}`; // Create new path
 
@@ -151,7 +155,7 @@ export class ProductThemesService {
         gcsPath,
         file.mimetype,
       );
-      
+
       productTheme.imageUrl = imageUrl;
       productTheme.imagePath = gcsPath;
     }

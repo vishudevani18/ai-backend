@@ -12,12 +12,13 @@ import { StorageModule } from '../storage/storage.module';
       useFactory: (configService: ConfigService) => {
         const host = configService.get('app.database.host');
         const isCloudSql = host && host.startsWith('/cloudsql/');
-        
+
         // Get database config with fallbacks
-        const database = configService.get('app.database.database') || process.env.DB_DATABASE || 'dev_db';
+        const database =
+          configService.get('app.database.database') || process.env.DB_DATABASE || 'dev_db';
         const username = configService.get('app.database.username') || process.env.DB_USERNAME;
         const password = configService.get('app.database.password') || process.env.DB_PASSWORD;
-        
+
         return {
           type: 'postgres',
           host: host,

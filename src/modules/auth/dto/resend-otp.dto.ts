@@ -12,14 +12,14 @@ export class ResendOtpDto {
   @Transform(({ value }) => {
     // Remove any spaces, dashes, or other characters
     const cleaned = value.replace(/[\s\-\(\)]/g, '');
-    
+
     // If it doesn't start with +91, add it
     if (!cleaned.startsWith('+91')) {
       // Remove leading 0 if present
       const withoutZero = cleaned.startsWith('0') ? cleaned.substring(1) : cleaned;
       return `+91${withoutZero}`;
     }
-    
+
     return cleaned;
   })
   @Matches(/^\+91[6-9]\d{9}$/, {

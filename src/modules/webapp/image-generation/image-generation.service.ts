@@ -73,7 +73,7 @@ export class ImageGenerationService {
       const imageGenerationCost =
         this.configService.get<number>('app.credits.costs.imageGeneration') || 5;
       const currentBalance = await this.creditsService.checkBalance(userId);
-      
+
       if (currentBalance < imageGenerationCost) {
         throw new BusinessError(
           ErrorCode.INSUFFICIENT_CREDITS,
@@ -316,9 +316,9 @@ export class ImageGenerationService {
         this.configService.get<number>('app.credits.costs.bulkGenerationPerImage') || 5;
       const totalImages = productPoseIds.length;
       const totalCreditsRequired = totalImages * bulkGenerationCostPerImage;
-      
+
       const currentBalance = await this.creditsService.checkBalance(userId);
-      
+
       if (currentBalance < totalCreditsRequired) {
         throw new BusinessError(
           ErrorCode.INSUFFICIENT_CREDITS,

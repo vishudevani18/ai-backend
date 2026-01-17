@@ -21,10 +21,11 @@ export class CreateProductPoseDto {
   })
   image: any; // File will be handled by FileInterceptor
 
-  @ApiProperty({ 
-    example: ['uuid-of-product-type'], 
-    description: 'Array of product type IDs. Can be sent as JSON string in multipart/form-data: ["uuid1", "uuid2"]',
-    type: [String]
+  @ApiProperty({
+    example: ['uuid-of-product-type'],
+    description:
+      'Array of product type IDs. Can be sent as JSON string in multipart/form-data: ["uuid1", "uuid2"]',
+    type: [String],
   })
   @Transform(({ value }) => {
     if (typeof value === 'string') {
@@ -44,10 +45,11 @@ export class CreateProductPoseDto {
   @IsUUID('all', { each: true })
   productTypeIds: string[];
 
-  @ApiProperty({ 
-    example: ['uuid-of-product-background'], 
-    required: false, 
-    description: 'Array of product background IDs. Can be sent as JSON string in multipart/form-data: ["uuid1", "uuid2"]'
+  @ApiProperty({
+    example: ['uuid-of-product-background'],
+    required: false,
+    description:
+      'Array of product background IDs. Can be sent as JSON string in multipart/form-data: ["uuid1", "uuid2"]',
   })
   @IsOptional()
   @Transform(({ value }) => {

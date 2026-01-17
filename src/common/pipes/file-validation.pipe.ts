@@ -67,4 +67,3 @@ export class FileValidationPipe extends FileValidator<Record<string, unknown>> {
     return sanitized || 'image';
   }
 }
-

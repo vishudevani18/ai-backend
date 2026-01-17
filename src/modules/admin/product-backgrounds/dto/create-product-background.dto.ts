@@ -24,10 +24,11 @@ export class CreateProductBackgroundDto {
   })
   image: any; // File will be handled by FileInterceptor
 
-  @ApiProperty({ 
-    example: ['uuid-of-product-theme'], 
+  @ApiProperty({
+    example: ['uuid-of-product-theme'],
     required: false,
-    description: 'Array of product theme IDs. Can be sent as JSON string in multipart/form-data: ["uuid1", "uuid2"]'
+    description:
+      'Array of product theme IDs. Can be sent as JSON string in multipart/form-data: ["uuid1", "uuid2"]',
   })
   @IsOptional()
   @Transform(({ value }) => {

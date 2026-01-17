@@ -21,4 +21,3 @@ export class AdjustCreditsDto {
   @MaxLength(500)
   reason: string;
 }
-

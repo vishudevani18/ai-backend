@@ -15,7 +15,13 @@ export class PaginationQueryDto {
   @Min(1)
   page?: number = 1;
 
-  @ApiProperty({ required: false, default: 20, minimum: 1, maximum: 100, description: 'Items per page' })
+  @ApiProperty({
+    required: false,
+    default: 20,
+    minimum: 1,
+    maximum: 100,
+    description: 'Items per page',
+  })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
@@ -23,7 +29,12 @@ export class PaginationQueryDto {
   @Max(100)
   limit?: number = 20;
 
-  @ApiProperty({ required: false, enum: SortOrder, default: SortOrder.DESC, description: 'Sort order' })
+  @ApiProperty({
+    required: false,
+    enum: SortOrder,
+    default: SortOrder.DESC,
+    description: 'Sort order',
+  })
   @IsOptional()
   @IsEnum(SortOrder)
   sortOrder?: SortOrder = SortOrder.DESC;
@@ -33,4 +44,3 @@ export class PaginationQueryDto {
   @IsString()
   sortBy?: string = 'createdAt';
 }
-

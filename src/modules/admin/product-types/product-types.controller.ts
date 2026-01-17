@@ -1,5 +1,18 @@
 import { ROUTES } from '../../../common/constants';
-import { Controller, Get, Post, Body, Param, Query, Put, Patch, Delete, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Query,
+  Put,
+  Patch,
+  Delete,
+  HttpCode,
+  HttpStatus,
+  UseGuards,
+} from '@nestjs/common';
 import { ProductTypesService } from './product-types.service';
 import { CreateProductTypeDto } from './dto/create-product-type.dto';
 import { UpdateProductTypeDto } from './dto/update-product-type.dto';
@@ -22,9 +35,16 @@ export class ProductTypesController {
   @Get()
   @ApiOperation({
     summary: 'Get all product types with pagination, filtering, and sorting',
-    description: 'Filter by categoryId, search by name. Use includeDeleted=true to show only soft-deleted items. Sort by createdAt (default), updatedAt, name. Default: 20 items per page, sorted by createdAt DESC',
+    description:
+      'Filter by categoryId, search by name. Use includeDeleted=true to show only soft-deleted items. Sort by createdAt (default), updatedAt, name. Default: 20 items per page, sorted by createdAt DESC',
   })
-  @ApiQuery({ name: 'includeDeleted', required: false, type: Boolean, description: 'Show only soft-deleted items (default: false - shows only active items)', example: false })
+  @ApiQuery({
+    name: 'includeDeleted',
+    required: false,
+    type: Boolean,
+    description: 'Show only soft-deleted items (default: false - shows only active items)',
+    example: false,
+  })
   @ApiResponse({ status: 200, description: 'Product types retrieved successfully' })
   async findAll(@Query() filters: FilterProductTypesDto) {
     const { productTypes, total } = await this.service.findAll(filters);
@@ -59,7 +79,10 @@ export class ProductTypesController {
   }
 
   @Patch(':id/soft-delete')
-  @ApiOperation({ summary: 'Toggle soft delete status for a product type (restores if deleted, deletes if active)' })
+  @ApiOperation({
+    summary:
+      'Toggle soft delete status for a product type (restores if deleted, deletes if active)',
+  })
   @ApiResponse({ status: 200, description: 'Product type status toggled successfully' })
   async softDelete(@Param('id') id: string) {
     const result = await this.service.softDelete(id);

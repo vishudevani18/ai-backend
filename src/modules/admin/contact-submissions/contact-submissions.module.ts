@@ -11,4 +11,3 @@ import { ContactSubmissionsService } from './contact-submissions.service';
   exports: [ContactSubmissionsService],
 })
 export class ContactSubmissionsModule {}
-

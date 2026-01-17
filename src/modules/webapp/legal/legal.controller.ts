@@ -18,10 +18,7 @@ export class LegalController {
   async getPrivacyPolicy() {
     const document = await this.legalDocumentsService.getPrivacyPolicy();
     if (!document) {
-      return ResponseUtil.success(
-        { content: '', lastUpdated: null },
-        'Privacy policy not found',
-      );
+      return ResponseUtil.success({ content: '', lastUpdated: null }, 'Privacy policy not found');
     }
     return ResponseUtil.success(
       {
@@ -40,10 +37,7 @@ export class LegalController {
   async getTermsOfService() {
     const document = await this.legalDocumentsService.getTermsOfService();
     if (!document) {
-      return ResponseUtil.success(
-        { content: '', lastUpdated: null },
-        'Terms of service not found',
-      );
+      return ResponseUtil.success({ content: '', lastUpdated: null }, 'Terms of service not found');
     }
     return ResponseUtil.success(
       {
@@ -54,4 +48,3 @@ export class LegalController {
     );
   }
 }
-

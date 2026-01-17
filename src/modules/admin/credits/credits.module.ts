@@ -9,4 +9,3 @@ import { AdminCreditsService } from './credits.service';
   providers: [AdminCreditsService],
 })
 export class AdminCreditsModule {}
-

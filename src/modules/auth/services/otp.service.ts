@@ -31,7 +31,7 @@ export class OtpService {
    */
   async checkRateLimit(phone: string, purpose: OtpPurpose): Promise<void> {
     const windowStart = new Date(Date.now() - OTP_RATE_LIMIT_WINDOW_SECONDS * 1000);
-    
+
     const count = await this.otpRepo.count({
       where: {
         phone,
@@ -53,7 +53,8 @@ export class OtpService {
 
       if (oldestRecord) {
         const remainingSeconds = Math.floor(
-          (oldestRecord.createdAt.getTime() + OTP_RATE_LIMIT_WINDOW_SECONDS * 1000 - Date.now()) / 1000,
+          (oldestRecord.createdAt.getTime() + OTP_RATE_LIMIT_WINDOW_SECONDS * 1000 - Date.now()) /
+            1000,
         );
         const remainingMinutes = Math.ceil(remainingSeconds / 60);
         throw new HttpException(

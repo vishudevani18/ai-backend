@@ -28,7 +28,8 @@ export class ContactSubmissionsController {
 
   @Get()
   @ApiOperation({
-    summary: 'Get all contact form submissions with pagination, filtering, and sorting (Admin/Super Admin only)',
+    summary:
+      'Get all contact form submissions with pagination, filtering, and sorting (Admin/Super Admin only)',
     description:
       'Filter by status, email, date range. Sort by createdAt (default), updatedAt, email, name. Default: 20 items per page, sorted by createdAt DESC',
   })
@@ -88,4 +89,3 @@ export class ContactSubmissionsController {
     return ResponseUtil.success(null, 'Contact submission deleted successfully');
   }
 }
-

@@ -92,7 +92,9 @@ export class MessagingService {
 
       // In development, don't throw error - OTP is already logged and stored
       if (isDevMode) {
-        this.logger.warn(`[DEV MODE] OTP sending failed, but OTP is logged above and stored in database`);
+        this.logger.warn(
+          `[DEV MODE] OTP sending failed, but OTP is logged above and stored in database`,
+        );
         return;
       }
 

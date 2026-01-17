@@ -20,7 +20,14 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { ProductThemesService } from './product-themes.service';
 import { CreateProductThemeDto } from './dto/create-product-theme.dto';
 import { UpdateProductThemeDto } from './dto/update-product-theme.dto';
-import { ApiTags, ApiOperation, ApiQuery, ApiBearerAuth, ApiConsumes, ApiResponse } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiQuery,
+  ApiBearerAuth,
+  ApiConsumes,
+  ApiResponse,
+} from '@nestjs/swagger';
 import { FileValidationPipe } from '../../../common/pipes/file-validation.pipe';
 import { ResponseUtil } from '@/common/utils/response.util';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
@@ -40,9 +47,16 @@ export class ProductThemesController {
   @Get()
   @ApiOperation({
     summary: 'Get all product themes with pagination, filtering, and sorting',
-    description: 'Search by name. Use includeDeleted=true to show only soft-deleted items. Sort by createdAt (default), updatedAt, name. Default: 20 items per page, sorted by createdAt DESC',
+    description:
+      'Search by name. Use includeDeleted=true to show only soft-deleted items. Sort by createdAt (default), updatedAt, name. Default: 20 items per page, sorted by createdAt DESC',
   })
-  @ApiQuery({ name: 'includeDeleted', required: false, type: Boolean, description: 'Show only soft-deleted items (default: false - shows only active items)', example: false })
+  @ApiQuery({
+    name: 'includeDeleted',
+    required: false,
+    type: Boolean,
+    description: 'Show only soft-deleted items (default: false - shows only active items)',
+    example: false,
+  })
   @ApiResponse({ status: 200, description: 'Product themes retrieved successfully' })
   async findAll(@Query() filters: FilterProductThemesDto) {
     const { themes, total } = await this.service.findAll(filters);
@@ -68,7 +82,9 @@ export class ProductThemesController {
   @ApiOperation({ summary: 'Create a new product theme' })
   async create(
     @Body() dto: CreateProductThemeDto,
-    @UploadedFile(new ParseFilePipe({ validators: [new FileValidationPipe()], fileIsRequired: false }))
+    @UploadedFile(
+      new ParseFilePipe({ validators: [new FileValidationPipe()], fileIsRequired: false }),
+    )
     file?: Express.Multer.File,
   ) {
     const result = await this.service.create(dto, file);
@@ -82,7 +98,9 @@ export class ProductThemesController {
   async update(
     @Param('id') id: string,
     @Body() dto: UpdateProductThemeDto,
-    @UploadedFile(new ParseFilePipe({ validators: [new FileValidationPipe()], fileIsRequired: false }))
+    @UploadedFile(
+      new ParseFilePipe({ validators: [new FileValidationPipe()], fileIsRequired: false }),
+    )
     file?: Express.Multer.File,
   ) {
     const result = await this.service.update(id, dto, file);
@@ -90,7 +108,10 @@ export class ProductThemesController {
   }
 
   @Patch(':id/soft-delete')
-  @ApiOperation({ summary: 'Toggle soft delete status for a product theme (restores if deleted, deletes if active)' })
+  @ApiOperation({
+    summary:
+      'Toggle soft delete status for a product theme (restores if deleted, deletes if active)',
+  })
   @ApiResponse({ status: 200, description: 'Product theme status toggled successfully' })
   async softDelete(@Param('id') id: string) {
     const result = await this.service.softDelete(id);

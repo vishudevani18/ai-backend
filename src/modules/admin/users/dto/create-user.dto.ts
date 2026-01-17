@@ -86,4 +86,3 @@ export class CreateUserDto {
   @Type(() => BusinessDto)
   business?: BusinessDto;
 }
-

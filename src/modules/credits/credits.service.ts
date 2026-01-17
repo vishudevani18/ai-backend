@@ -2,7 +2,10 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { User } from '../../database/entities/user.entity';
-import { CreditTransaction, CreditOperationType } from '../../database/entities/credit-transaction.entity';
+import {
+  CreditTransaction,
+  CreditOperationType,
+} from '../../database/entities/credit-transaction.entity';
 import { BusinessError, ErrorCode } from '../../common/errors/business.error';
 import { HttpStatus } from '@nestjs/common';
 
@@ -217,10 +220,7 @@ export class CreditsService {
       });
     }
 
-    const [transactions, total] = await queryBuilder
-      .skip(skip)
-      .take(limit)
-      .getManyAndCount();
+    const [transactions, total] = await queryBuilder.skip(skip).take(limit).getManyAndCount();
 
     return { transactions, total };
   }
@@ -253,12 +253,8 @@ export class CreditsService {
       });
     }
 
-    const [transactions, total] = await queryBuilder
-      .skip(skip)
-      .take(limit)
-      .getManyAndCount();
+    const [transactions, total] = await queryBuilder.skip(skip).take(limit).getManyAndCount();
 
     return { transactions, total };
   }
 }
-

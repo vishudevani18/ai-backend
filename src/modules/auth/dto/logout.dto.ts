@@ -10,4 +10,3 @@ export class LogoutDto {
   @MinLength(10, { message: 'Invalid refresh token format' })
   refreshToken: string;
 }
-

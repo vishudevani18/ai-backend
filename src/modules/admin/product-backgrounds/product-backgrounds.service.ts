@@ -57,8 +57,12 @@ export class ProductBackgroundsService {
     // Update GCS path with actual ID if different (overwrite with correct path)
     if (saved.id !== tempId) {
       const newPath = `product-backgrounds/${saved.id}/image.${fileExtension}`;
-      const newUrl = await this.gcsStorageService.uploadPublicFile(file.buffer, newPath, file.mimetype);
-      
+      const newUrl = await this.gcsStorageService.uploadPublicFile(
+        file.buffer,
+        newPath,
+        file.mimetype,
+      );
+
       // Delete old file if path changed
       if (gcsPath !== newPath) {
         try {
@@ -67,7 +71,7 @@ export class ProductBackgroundsService {
           console.error('Failed to delete old image:', error);
         }
       }
-      
+
       saved.imageUrl = newUrl;
       saved.imagePath = newPath;
       return this.repo.save(saved);
@@ -122,7 +126,7 @@ export class ProductBackgroundsService {
     qb.skip((page - 1) * limit).take(limit);
 
     const [results, total] = await qb.getManyAndCount();
-    
+
     // Return only imageUrl (CDN URL), no base64 fallback
     const backgrounds = results.map(bg => ({
       ...bg,
@@ -138,7 +142,7 @@ export class ProductBackgroundsService {
       relations: ['productThemes'],
     });
     if (!productBackground) throw new NotFoundException('Product background not found');
-    
+
     // Return only imageUrl (CDN URL), no base64 fallback
     return {
       ...productBackground,
@@ -163,7 +167,7 @@ export class ProductBackgroundsService {
     if (file) {
       // Use overwriting strategy: reuse same path if exists, otherwise create new
       const fileExtension = file.originalname.split('.').pop() || 'jpg';
-      const gcsPath = productBackground.imagePath 
+      const gcsPath = productBackground.imagePath
         ? productBackground.imagePath // Reuse existing path (overwrite)
         : `product-backgrounds/${id}/image.${fileExtension}`; // Create new path
 
@@ -173,7 +177,7 @@ export class ProductBackgroundsService {
         gcsPath,
         file.mimetype,
       );
-      
+
       productBackground.imageUrl = imageUrl;
       productBackground.imagePath = gcsPath;
     }
@@ -182,7 +186,7 @@ export class ProductBackgroundsService {
     productBackground.description = dto.description ?? productBackground.description;
 
     const saved = await this.repo.save(productBackground);
-    
+
     // Return only imageUrl (CDN URL), no base64 fallback
     return {
       ...saved,

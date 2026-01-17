@@ -12,7 +12,10 @@ import { UserAddress } from '../../../database/entities/user-address.entity';
 import { UserBusiness } from '../../../database/entities/user-business.entity';
 import { UpdateUserDto } from '../../users/dto/update-user.dto';
 import { ChangePasswordDto } from '../../users/dto/change-password.dto';
-import { BCRYPT_SALT_ROUNDS, DEFAULT_ADDRESS_COUNTRY } from '../../../common/constants/auth.constants';
+import {
+  BCRYPT_SALT_ROUNDS,
+  DEFAULT_ADDRESS_COUNTRY,
+} from '../../../common/constants/auth.constants';
 import { ProfileDto } from '../../auth/dto/profile.dto';
 
 @Injectable()
@@ -37,9 +40,7 @@ export class WebAppProfileService {
     }
 
     // Get the default address (single object, same as business)
-    const defaultAddress = user.addresses?.find(
-      (addr) => addr.addressType === 'default',
-    );
+    const defaultAddress = user.addresses?.find(addr => addr.addressType === 'default');
 
     // Transform address to AddressDto format (single object)
     const addressDto = defaultAddress
@@ -108,14 +109,12 @@ export class WebAppProfileService {
     // Update address if provided and has at least one field
     if (updateUserDto.address) {
       const hasAddressFields = Object.values(updateUserDto.address).some(
-        (value) => value !== undefined && value !== null && value !== '',
+        value => value !== undefined && value !== null && value !== '',
       );
 
       if (hasAddressFields) {
         // Find existing default address - UPDATE existing, don't create duplicate
-        let defaultAddress = user.addresses?.find(
-          (addr) => addr.addressType === 'default',
-        );
+        let defaultAddress = user.addresses?.find(addr => addr.addressType === 'default');
 
         if (defaultAddress) {
           // UPDATE existing address record
@@ -163,7 +162,7 @@ export class WebAppProfileService {
     if (updateUserDto.business) {
       // Check if at least one field has a non-empty value
       const hasBusinessFields = Object.values(updateUserDto.business).some(
-        (value) => value !== undefined && value !== null && value !== '',
+        value => value !== undefined && value !== null && value !== '',
       );
 
       // If business exists, always allow updates (even if clearing fields)
@@ -229,7 +228,7 @@ export class WebAppProfileService {
 
     // Get the default address (single object, same as business)
     const defaultAddress = userWithRelations.addresses?.find(
-      (addr) => addr.addressType === 'default',
+      addr => addr.addressType === 'default',
     );
 
     // Transform address to AddressDto format (single object)

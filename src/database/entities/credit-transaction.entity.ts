@@ -40,4 +40,3 @@ export class CreditTransaction extends BaseEntity {
   @Column({ name: 'balance_after', type: 'integer' })
   balanceAfter: number;
 }
-

@@ -1,8 +1,4 @@
-import {
-  EventSubscriber,
-  EntitySubscriberInterface,
-  DataSource,
-} from 'typeorm';
+import { EventSubscriber, EntitySubscriberInterface, DataSource } from 'typeorm';
 import { GeneratedImage } from '../entities/generated-image.entity';
 import { GcsStorageService } from '../../storage/services/gcs-storage.service';
 import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
@@ -37,4 +33,3 @@ export class GeneratedImageCleanupSubscriber implements EntitySubscriberInterfac
    * This subscriber can be extended for event-based cleanup if needed.
    */
 }
-

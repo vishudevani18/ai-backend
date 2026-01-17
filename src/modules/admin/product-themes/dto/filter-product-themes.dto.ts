@@ -9,10 +9,13 @@ export class FilterProductThemesDto extends PaginationQueryDto {
   @IsString()
   search?: string;
 
-  @ApiProperty({ required: false, default: false, description: 'Show only soft-deleted items (when true, returns only deleted items)' })
+  @ApiProperty({
+    required: false,
+    default: false,
+    description: 'Show only soft-deleted items (when true, returns only deleted items)',
+  })
   @IsOptional()
   @IsBoolean()
   @Type(() => Boolean)
   includeDeleted?: boolean = false;
 }
-

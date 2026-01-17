@@ -124,7 +124,7 @@ export class AuthService {
 
     // 9. Get the default address (single object, same as business)
     const defaultAddress = userWithRelations?.addresses?.find(
-      (addr) => addr.addressType === 'default',
+      addr => addr.addressType === 'default',
     );
 
     // 10. Transform address to AddressDto format (single object)
@@ -222,7 +222,7 @@ export class AuthService {
 
     // 8. Get the default address (single object, same as business)
     const defaultAddress = userWithRelations?.addresses?.find(
-      (addr) => addr.addressType === 'default',
+      addr => addr.addressType === 'default',
     );
 
     // 9. Transform address to AddressDto format (single object)
@@ -312,9 +312,7 @@ export class AuthService {
     }
 
     // Get the default address (single object, same as business)
-    const defaultAddress = user.addresses?.find(
-      (addr) => addr.addressType === 'default',
-    );
+    const defaultAddress = user.addresses?.find(addr => addr.addressType === 'default');
 
     // Transform address to AddressDto format (single object)
     const addressDto = defaultAddress
@@ -755,7 +753,7 @@ export class AuthService {
 
       // Get the default address
       const defaultAddress = userWithRelations?.addresses?.find(
-        (addr) => addr.addressType === 'default',
+        addr => addr.addressType === 'default',
       );
 
       const addressDto = defaultAddress

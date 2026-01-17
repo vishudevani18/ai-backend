@@ -11,4 +11,3 @@ export class UpdateStatusDto {
   @IsEnum(ContactFormStatus)
   status: ContactFormStatus;
 }
-

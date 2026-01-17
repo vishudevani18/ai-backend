@@ -13,10 +13,11 @@ export class CreateProductThemeDto {
   @IsString()
   description?: string;
 
-  @ApiProperty({ 
-    example: ['uuid-of-product-type'], 
+  @ApiProperty({
+    example: ['uuid-of-product-type'],
     required: false,
-    description: 'Array of product type IDs. Can be sent as JSON string in multipart/form-data: ["uuid1", "uuid2"]'
+    description:
+      'Array of product type IDs. Can be sent as JSON string in multipart/form-data: ["uuid1", "uuid2"]',
   })
   @IsOptional()
   @Transform(({ value }) => {

@@ -23,7 +23,8 @@ export class ImageCleanupService {
    * @param generatedImageId ID of the generated image record
    */
   async scheduleDeletion(imagePath: string, generatedImageId: string): Promise<void> {
-    const retentionHours = this.configService.get<number>('app.gemini.imageGeneration.imageRetentionHours') || 6;
+    const retentionHours =
+      this.configService.get<number>('app.gemini.imageGeneration.imageRetentionHours') || 6;
     const expiresAt = new Date();
     expiresAt.setHours(expiresAt.getHours() + retentionHours);
 
@@ -81,4 +82,3 @@ export class ImageCleanupService {
     this.logger.log(`Cleanup completed: ${expiredImages.length} images processed`);
   }
 }
-

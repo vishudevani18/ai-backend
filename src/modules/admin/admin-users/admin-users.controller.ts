@@ -15,13 +15,7 @@ import {
 import { AdminUsersService } from './admin-users.service';
 import { CreateAdminDto } from './dto/create-admin.dto';
 import { UpdateAdminDto } from './dto/update-admin.dto';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiBearerAuth,
-  ApiParam,
-} from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
 import { Roles } from '../../../common/decorators/roles.decorator';
@@ -53,7 +47,8 @@ export class AdminUsersController {
   @Get()
   @ApiOperation({
     summary: 'Get all admin users with pagination, filtering, and sorting (Super Admin only)',
-    description: 'Filter by email, phone, status. Sort by createdAt (default), updatedAt, email, firstName, lastName. Default: 20 items per page, sorted by createdAt DESC',
+    description:
+      'Filter by email, phone, status. Sort by createdAt (default), updatedAt, email, firstName, lastName. Default: 20 items per page, sorted by createdAt DESC',
   })
   @ApiResponse({ status: 200, description: 'Admins retrieved successfully' })
   async findAll(@Query() filters: FilterAdminUsersDto) {
@@ -103,12 +98,21 @@ export class AdminUsersController {
   }
 
   @Patch(':id/toggle-active')
-  @ApiOperation({ summary: 'Toggle admin user active/inactive status (Super Admin only). Switches between ACTIVE and INACTIVE status. Cannot deactivate yourself.' })
+  @ApiOperation({
+    summary:
+      'Toggle admin user active/inactive status (Super Admin only). Switches between ACTIVE and INACTIVE status. Cannot deactivate yourself.',
+  })
   @ApiParam({ name: 'id', description: 'Admin ID' })
-  @ApiResponse({ status: 200, description: 'Admin status toggled successfully. Returns updated admin with new status.' })
+  @ApiResponse({
+    status: 200,
+    description: 'Admin status toggled successfully. Returns updated admin with new status.',
+  })
   @ApiResponse({ status: 404, description: 'Admin not found' })
   @ApiResponse({ status: 400, description: 'Cannot deactivate yourself' })
-  @ApiResponse({ status: 401, description: 'Unauthorized - Only super admin can toggle admin status' })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized - Only super admin can toggle admin status',
+  })
   async toggleActive(@Param('id') id: string, @CurrentUser() currentUser: User) {
     const admin = await this.adminUsersService.toggleActive(id, currentUser.id);
     return ResponseUtil.success(admin, 'Admin status toggled successfully');

@@ -24,4 +24,3 @@ export class LegalDocument extends BaseEntity {
   })
   lastUpdated: Date;
 }
-

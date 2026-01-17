@@ -35,9 +35,16 @@ export class IndustriesController {
   @Get()
   @ApiOperation({
     summary: 'Get all industries with pagination, filtering, and sorting',
-    description: 'Search by name. Use includeDeleted=true to show only soft-deleted items. Sort by createdAt (default), updatedAt, name. Default: 20 items per page, sorted by createdAt DESC',
+    description:
+      'Search by name. Use includeDeleted=true to show only soft-deleted items. Sort by createdAt (default), updatedAt, name. Default: 20 items per page, sorted by createdAt DESC',
   })
-  @ApiQuery({ name: 'includeDeleted', required: false, type: Boolean, description: 'Show only soft-deleted items (default: false - shows only active items)', example: false })
+  @ApiQuery({
+    name: 'includeDeleted',
+    required: false,
+    type: Boolean,
+    description: 'Show only soft-deleted items (default: false - shows only active items)',
+    example: false,
+  })
   @ApiResponse({ status: 200, description: 'Industries retrieved successfully' })
   async findAll(@Query() filters: FilterIndustriesDto) {
     const { industries, total } = await this.service.findAll(filters);
@@ -77,7 +84,9 @@ export class IndustriesController {
   }
 
   @Patch(':id/soft-delete')
-  @ApiOperation({ summary: 'Toggle soft delete status for an industry (restores if deleted, deletes if active)' })
+  @ApiOperation({
+    summary: 'Toggle soft delete status for an industry (restores if deleted, deletes if active)',
+  })
   @ApiResponse({ status: 200, description: 'Industry status toggled successfully' })
   async softDelete(@Param('id') id: string) {
     const result = await this.service.softDelete(id);

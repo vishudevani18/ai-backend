@@ -35,4 +35,3 @@ export class DashboardController {
     return ResponseUtil.success(stats, 'Dashboard statistics retrieved successfully');
   }
 }
-

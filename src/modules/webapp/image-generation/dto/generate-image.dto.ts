@@ -27,7 +27,10 @@ export class GenerateImageDto {
   @IsNotEmpty()
   productThemeId: string;
 
-  @ApiProperty({ description: 'Product Background ID', example: '123e4567-e89b-12d3-a456-426614174005' })
+  @ApiProperty({
+    description: 'Product Background ID',
+    example: '123e4567-e89b-12d3-a456-426614174005',
+  })
   @IsString()
   @IsNotEmpty()
   productBackgroundId: string;
@@ -37,14 +40,20 @@ export class GenerateImageDto {
   @IsNotEmpty()
   aiFaceId: string;
 
-  @ApiProperty({ description: 'Base64 encoded product image', example: 'data:image/jpeg;base64,/9j/4AAQSkZJRg...' })
+  @ApiProperty({
+    description: 'Base64 encoded product image',
+    example: 'data:image/jpeg;base64,/9j/4AAQSkZJRg...',
+  })
   @IsString()
   @IsNotEmpty()
   productImage: string; // Base64 encoded image
 
-  @ApiProperty({ description: 'MIME type of the product image', example: 'image/jpeg', enum: ['image/jpeg', 'image/png', 'image/webp'] })
+  @ApiProperty({
+    description: 'MIME type of the product image',
+    example: 'image/jpeg',
+    enum: ['image/jpeg', 'image/png', 'image/webp'],
+  })
   @IsString()
   @IsNotEmpty()
   productImageMimeType: string; // e.g., 'image/jpeg'
 }
-

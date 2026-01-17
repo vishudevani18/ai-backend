@@ -37,4 +37,3 @@ export class AdminCreditsService {
     return { userId, balance };
   }
 }
-

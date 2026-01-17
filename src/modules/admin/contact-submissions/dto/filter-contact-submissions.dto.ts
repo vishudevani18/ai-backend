@@ -36,4 +36,3 @@ export class FilterContactSubmissionsDto extends PaginationQueryDto {
   @IsDateString()
   endDate?: string;
 }
-

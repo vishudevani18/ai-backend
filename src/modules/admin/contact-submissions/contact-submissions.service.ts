@@ -12,17 +12,10 @@ export class ContactSubmissionsService {
     private readonly contactFormRepository: Repository<ContactForm>,
   ) {}
 
-  async findAll(filters: FilterContactSubmissionsDto): Promise<{ submissions: ContactForm[]; total: number }> {
-    const {
-      page = 1,
-      limit = 20,
-      status,
-      email,
-      startDate,
-      endDate,
-      sortBy,
-      sortOrder,
-    } = filters;
+  async findAll(
+    filters: FilterContactSubmissionsDto,
+  ): Promise<{ submissions: ContactForm[]; total: number }> {
+    const { page = 1, limit = 20, status, email, startDate, endDate, sortBy, sortOrder } = filters;
 
     const queryBuilder = this.contactFormRepository
       .createQueryBuilder('cf')
@@ -142,4 +135,3 @@ export class ContactSubmissionsService {
     await this.contactFormRepository.softDelete(id);
   }
 }
-

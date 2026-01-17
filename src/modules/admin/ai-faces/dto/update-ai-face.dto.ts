@@ -33,4 +33,3 @@ export class UpdateAiFaceDto {
   })
   image?: any; // File will be handled by FileInterceptor
 }
-

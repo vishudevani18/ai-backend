@@ -11,4 +11,3 @@ export class UpdateLegalDocumentDto {
   @MinLength(10, { message: 'Content must be at least 10 characters long' })
   content: string;
 }
-

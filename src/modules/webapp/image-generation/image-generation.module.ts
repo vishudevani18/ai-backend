@@ -35,4 +35,3 @@ import { CreditsModule } from '../../credits/credits.module';
   exports: [ImageGenerationService, ImageCleanupService],
 })
 export class ImageGenerationModule {}
-

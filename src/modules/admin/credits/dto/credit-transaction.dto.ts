@@ -46,4 +46,3 @@ export class CreditTransactionFilterDto {
   @ApiPropertyOptional({ description: 'Filter by operation type', enum: CreditOperationType })
   operationType?: CreditOperationType;
 }
-

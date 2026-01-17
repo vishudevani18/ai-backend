@@ -219,9 +219,10 @@ export class AuthController {
   @Post('reset-password')
   @RateLimit({ limit: 5, window: 60 * 10 })
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Reset password after OTP verification',
-    description: 'Requires session token from OTP verification. Session token expires in 5 minutes and can only be used once.'
+    description:
+      'Requires session token from OTP verification. Session token expires in 5 minutes and can only be used once.',
   })
   @ApiBody({ type: ResetPasswordDto })
   @ApiResponse({ status: 200, description: 'Password reset successfully' })

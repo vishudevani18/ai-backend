@@ -8,10 +8,18 @@ import { ProductTheme } from '../../database/entities/product-theme.entity';
 import { ProductBackground } from '../../database/entities/product-background.entity';
 import { ProductPose } from '../../database/entities/product-pose.entity';
 import { AiFace } from '../../database/entities/ai-face.entity';
-import { GeneratedImage, GenerationStatus, GenerationType } from '../../database/entities/generated-image.entity';
+import {
+  GeneratedImage,
+  GenerationStatus,
+  GenerationType,
+} from '../../database/entities/generated-image.entity';
 import { User, UserRole } from '../../database/entities/user.entity';
 import { CreditTransaction } from '../../database/entities/credit-transaction.entity';
-import { SystemStatisticsResponseDto, GenerationsStatisticsDto, GeneralStatisticsDto } from './dto/system-statistics.dto';
+import {
+  SystemStatisticsResponseDto,
+  GenerationsStatisticsDto,
+  GeneralStatisticsDto,
+} from './dto/system-statistics.dto';
 
 @Injectable()
 export class WebAppService {
@@ -55,10 +63,26 @@ export class WebAppService {
       .createQueryBuilder('industry')
       .leftJoinAndSelect('industry.categories', 'category', 'category.deleted_at IS NULL')
       .leftJoinAndSelect('category.productTypes', 'productType', 'productType.deleted_at IS NULL')
-      .leftJoinAndSelect('productType.productThemes', 'productTheme', 'productTheme.deleted_at IS NULL')
-      .leftJoinAndSelect('productTheme.productBackgrounds', 'productBackground', 'productBackground.deleted_at IS NULL')
-      .leftJoinAndSelect('productType.productPoses', 'productPose', 'productPose.deleted_at IS NULL')
-      .leftJoinAndSelect('productPose.productBackgrounds', 'poseBackground', 'poseBackground.deleted_at IS NULL')
+      .leftJoinAndSelect(
+        'productType.productThemes',
+        'productTheme',
+        'productTheme.deleted_at IS NULL',
+      )
+      .leftJoinAndSelect(
+        'productTheme.productBackgrounds',
+        'productBackground',
+        'productBackground.deleted_at IS NULL',
+      )
+      .leftJoinAndSelect(
+        'productType.productPoses',
+        'productPose',
+        'productPose.deleted_at IS NULL',
+      )
+      .leftJoinAndSelect(
+        'productPose.productBackgrounds',
+        'poseBackground',
+        'poseBackground.deleted_at IS NULL',
+      )
       .where('industry.deleted_at IS NULL')
       .orderBy('industry.name', 'ASC')
       .addOrderBy('category.name', 'ASC')
@@ -75,33 +99,36 @@ export class WebAppService {
       .getMany();
 
     // Group AI faces by category
-    const aiFacesByCategory = aiFaces.reduce((acc, face) => {
-      if (!acc[face.categoryId]) {
-        acc[face.categoryId] = { male: [], female: [] };
-      }
-      if (face.gender === 'male') {
-        acc[face.categoryId].male.push({
-          id: face.id,
-          name: face.name,
-          description: face.description,
-          gender: face.gender,
-          imageUrl: face.imageUrl || null,
-          createdAt: face.createdAt,
-          updatedAt: face.updatedAt,
-        });
-      } else {
-        acc[face.categoryId].female.push({
-          id: face.id,
-          name: face.name,
-          description: face.description,
-          gender: face.gender,
-          imageUrl: face.imageUrl || null,
-          createdAt: face.createdAt,
-          updatedAt: face.updatedAt,
-        });
-      }
-      return acc;
-    }, {} as Record<string, { male: any[]; female: any[] }>);
+    const aiFacesByCategory = aiFaces.reduce(
+      (acc, face) => {
+        if (!acc[face.categoryId]) {
+          acc[face.categoryId] = { male: [], female: [] };
+        }
+        if (face.gender === 'male') {
+          acc[face.categoryId].male.push({
+            id: face.id,
+            name: face.name,
+            description: face.description,
+            gender: face.gender,
+            imageUrl: face.imageUrl || null,
+            createdAt: face.createdAt,
+            updatedAt: face.updatedAt,
+          });
+        } else {
+          acc[face.categoryId].female.push({
+            id: face.id,
+            name: face.name,
+            description: face.description,
+            gender: face.gender,
+            imageUrl: face.imageUrl || null,
+            createdAt: face.createdAt,
+            updatedAt: face.updatedAt,
+          });
+        }
+        return acc;
+      },
+      {} as Record<string, { male: any[]; female: any[] }>,
+    );
 
     // Build clean nested JSON for the public webapp with all fields
     return industries.map(industry => ({
@@ -153,7 +180,6 @@ export class WebAppService {
                 ?.map(pose => ({
                   id: pose.id,
                   name: pose.name,
-                  description: pose.description,
                   imageUrl: pose.imageUrl || null,
                   createdAt: pose.createdAt,
                   updatedAt: pose.updatedAt,
@@ -223,34 +249,6 @@ export class WebAppService {
    * Get generations statistics
    */
   private async getGenerationsStatistics(): Promise<GenerationsStatisticsDto> {
-    // Get users who used single generation
-    // Partition-ready: Filter by createdAt for partition pruning (if partitioned)
-    // Note: TypeORM automatically excludes soft-deleted records (deletedAt IS NULL)
-    const usersWithSingleGenerationResult = await this.generatedImageRepo
-      .createQueryBuilder('gi')
-      .select('COUNT(DISTINCT gi.userId)', 'count')
-      .where('gi.generationType = :type', { type: GenerationType.SINGLE })
-      .andWhere('gi.userId IS NOT NULL')
-      .andWhere('gi.generationStatus = :status', { status: GenerationStatus.SUCCESS })
-      .getRawOne();
-    const usersWithSingleGeneration = usersWithSingleGenerationResult?.count
-      ? parseInt(usersWithSingleGenerationResult.count, 10)
-      : 0;
-
-    // Get users who used bulk generation
-    // Partition-ready: Filter by createdAt for partition pruning (if partitioned)
-    // Note: TypeORM automatically excludes soft-deleted records
-    const usersWithBulkGenerationResult = await this.generatedImageRepo
-      .createQueryBuilder('gi')
-      .select('COUNT(DISTINCT gi.userId)', 'count')
-      .where('gi.generationType = :type', { type: GenerationType.BULK })
-      .andWhere('gi.userId IS NOT NULL')
-      .andWhere('gi.generationStatus = :status', { status: GenerationStatus.SUCCESS })
-      .getRawOne();
-    const usersWithBulkGeneration = usersWithBulkGenerationResult?.count
-      ? parseInt(usersWithBulkGenerationResult.count, 10)
-      : 0;
-
     // Get total image generations
     // Partition-ready: Queries will benefit from partition pruning when partitioned
     // Note: TypeORM automatically excludes soft-deleted records
@@ -258,10 +256,46 @@ export class WebAppService {
       where: { generationStatus: GenerationStatus.SUCCESS },
     });
 
+    // Get count of single generations (times used = number of images, since each single generation = 1 image)
+    const singleGenerations = await this.generatedImageRepo.count({
+      where: {
+        generationType: GenerationType.SINGLE,
+        generationStatus: GenerationStatus.SUCCESS,
+      },
+    });
+
+    // Get count of bulk generation requests (distinct bulk operations)
+    // A bulk generation operation is identified by grouping images with the same
+    // shared parameters (industry, category, productType, theme, background, aiFace)
+    // and generationType = BULK created within a short time window (1 minute)
+    // Partition-ready: Uses created_at for grouping, enables partition pruning
+    // Note: TypeORM automatically excludes soft-deleted records
+    const bulkGenerationRequestsResult = await this.generatedImageRepo
+      .createQueryBuilder('gi')
+      .select(
+        "COUNT(DISTINCT CONCAT(gi.industry_id, gi.category_id, gi.product_type_id, gi.product_theme_id, gi.product_background_id, gi.ai_face_id, DATE_TRUNC('minute', gi.created_at)))",
+        'count',
+      )
+      .where('gi.generationType = :type', { type: GenerationType.BULK })
+      .andWhere('gi.generationStatus = :status', { status: GenerationStatus.SUCCESS })
+      .getRawOne();
+    const bulkGenerationRequests = bulkGenerationRequestsResult?.count
+      ? parseInt(bulkGenerationRequestsResult.count, 10)
+      : 0;
+
+    // Get count of images generated via bulk/catalog generation (total images from all bulk requests)
+    const bulkGenerations = await this.generatedImageRepo.count({
+      where: {
+        generationType: GenerationType.BULK,
+        generationStatus: GenerationStatus.SUCCESS,
+      },
+    });
+
     return {
-      usersWithSingleGeneration,
-      usersWithBulkGeneration,
       totalImageGenerations,
+      singleGenerations,
+      bulkGenerationRequests,
+      bulkGenerations,
     };
   }
 

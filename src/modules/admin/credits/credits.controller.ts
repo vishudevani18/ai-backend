@@ -50,7 +50,8 @@ export class AdminCreditsController {
   @Get('users/:userId/transactions')
   @ApiOperation({
     summary: 'Get credit transactions for a specific user (Admin/Super Admin only)',
-    description: 'Get credit transaction history for a specific user with pagination and filtering.',
+    description:
+      'Get credit transaction history for a specific user with pagination and filtering.',
   })
   @ApiParam({ name: 'userId', description: 'User ID' })
   @ApiResponse({ status: 200, description: 'User transactions retrieved successfully' })
@@ -96,10 +97,7 @@ export class AdminCreditsController {
   @ApiResponse({ status: 200, description: 'Credits adjusted successfully' })
   @ApiResponse({ status: 400, description: 'Invalid amount or insufficient credits' })
   @ApiResponse({ status: 404, description: 'User not found' })
-  async adjustCredits(
-    @Param('userId') userId: string,
-    @Body() adjustCreditsDto: AdjustCreditsDto,
-  ) {
+  async adjustCredits(@Param('userId') userId: string, @Body() adjustCreditsDto: AdjustCreditsDto) {
     const { amount, reason } = adjustCreditsDto;
 
     if (amount > 0) {
@@ -125,4 +123,3 @@ export class AdminCreditsController {
     }
   }
 }
-

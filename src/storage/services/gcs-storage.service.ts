@@ -93,7 +93,7 @@ export class GcsStorageService {
       });
 
       this.logger.log(`File uploaded successfully: ${path}`);
-      
+
       // Generate and return a signed URL (expires in 1 hour)
       // Note: This URL will expire. Use getSignedUrl() to regenerate if needed
       const signedUrl = await this.getSignedUrl(path, 3600000); // 1 hour
@@ -197,7 +197,9 @@ export class GcsStorageService {
    */
   extractPathFromUrl(url: string): string {
     // Handle public GCS URLs: https://storage.googleapis.com/{bucket}/{path}
-    const publicUrlPattern = new RegExp(`https://storage\\.googleapis\\.com/${this.bucketName}/(.+?)(\\?|$)`);
+    const publicUrlPattern = new RegExp(
+      `https://storage\\.googleapis\\.com/${this.bucketName}/(.+?)(\\?|$)`,
+    );
     const publicMatch = url.match(publicUrlPattern);
     if (publicMatch && publicMatch[1]) {
       return decodeURIComponent(publicMatch[1]);
@@ -223,4 +225,3 @@ export class GcsStorageService {
     return url;
   }
 }
-

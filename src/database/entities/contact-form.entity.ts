@@ -52,4 +52,3 @@ export class ContactForm extends BaseEntity {
   @JoinColumn({ name: 'read_by' })
   readByUser?: User; // FK constraint: SET NULL if admin user is deleted
 }
-

@@ -78,7 +78,8 @@ export default registerAs('app', () => ({
       promptTemplate: process.env.GEMINI_IMAGE_PROMPT_TEMPLATE,
       maxImages: 4,
       responseModality: 'IMAGE' as const,
-      imageRetentionHours: parseInt(process.env.IMAGE_RETENTION_HOURS, 10) || DEFAULT_IMAGE_RETENTION_HOURS,
+      imageRetentionHours:
+        parseInt(process.env.IMAGE_RETENTION_HOURS, 10) || DEFAULT_IMAGE_RETENTION_HOURS,
       location: process.env.VERTEX_AI_LOCATION || 'us-central1',
     },
   },
@@ -117,11 +118,14 @@ export default registerAs('app', () => ({
     expiryMinutes: parseInt(process.env.OTP_EXPIRY_MINUTES, 10) || DEFAULT_OTP_EXPIRY_MINUTES,
   },
   credits: {
-    defaultSignupCredits: parseInt(process.env.DEFAULT_SIGNUP_CREDITS, 10) || DEFAULT_SIGNUP_CREDITS,
+    defaultSignupCredits:
+      parseInt(process.env.DEFAULT_SIGNUP_CREDITS, 10) || DEFAULT_SIGNUP_CREDITS,
     costs: {
-      imageGeneration: parseInt(process.env.IMAGE_GENERATION_COST, 10) || DEFAULT_IMAGE_GENERATION_COST,
+      imageGeneration:
+        parseInt(process.env.IMAGE_GENERATION_COST, 10) || DEFAULT_IMAGE_GENERATION_COST,
       bulkGenerationPerImage:
-        parseInt(process.env.BULK_GENERATION_COST_PER_IMAGE, 10) || DEFAULT_BULK_GENERATION_COST_PER_IMAGE,
+        parseInt(process.env.BULK_GENERATION_COST_PER_IMAGE, 10) ||
+        DEFAULT_BULK_GENERATION_COST_PER_IMAGE,
       faceSwap: parseInt(process.env.FACE_SWAP_COST, 10) || DEFAULT_FACE_SWAP_COST,
     },
   },

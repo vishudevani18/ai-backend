@@ -38,7 +38,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
     // Ensure proper headers are set
     response.setHeader('Content-Type', 'application/json');
-    
+
     // Send response with proper status and JSON body
     response.status(status).json(errorResponse);
   }
@@ -137,7 +137,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
     // Ensure proper headers are set
     response.setHeader('Content-Type', 'application/json');
-    
+
     // Send response with proper status and JSON body
     response.status(status).json(errorResponse);
   }

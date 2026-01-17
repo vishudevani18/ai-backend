@@ -32,9 +32,10 @@ export class WebAppProfileController {
   }
 
   @Patch()
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Update current user profile (User only)',
-    description: 'Update user profile information. Note: Phone number and email cannot be updated for security reasons. Phone is set during signup and cannot be changed.'
+    description:
+      'Update user profile information. Note: Phone number and email cannot be updated for security reasons. Phone is set during signup and cannot be changed.',
   })
   @ApiResponse({ status: 200, description: 'Profile updated successfully' })
   async updateProfile(@CurrentUser() user: JwtUser, @Body() updateUserDto: UpdateUserDto) {

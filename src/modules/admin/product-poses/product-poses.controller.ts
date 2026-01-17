@@ -20,7 +20,14 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { ProductPosesService } from './product-poses.service';
 import { CreateProductPoseDto } from './dto/create-product-pose.dto';
 import { UpdateProductPoseDto } from './dto/update-product-pose.dto';
-import { ApiOperation, ApiQuery, ApiResponse, ApiTags, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
+import {
+  ApiOperation,
+  ApiQuery,
+  ApiResponse,
+  ApiTags,
+  ApiBearerAuth,
+  ApiConsumes,
+} from '@nestjs/swagger';
 import { FileValidationPipe } from '../../../common/pipes/file-validation.pipe';
 import { ResponseUtil } from '@/common/utils/response.util';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
@@ -40,9 +47,16 @@ export class ProductPosesController {
   @Get()
   @ApiOperation({
     summary: 'Get all product poses with pagination, filtering, and sorting',
-    description: 'Filter by productTypeId (returns poses that have this product type), search by name. Use includeDeleted=true to show only soft-deleted items. Sort by createdAt (default), updatedAt, name. Default: 20 items per page, sorted by createdAt DESC',
+    description:
+      'Filter by productTypeId (returns poses that have this product type), search by name. Use includeDeleted=true to show only soft-deleted items. Sort by createdAt (default), updatedAt, name. Default: 20 items per page, sorted by createdAt DESC',
   })
-  @ApiQuery({ name: 'includeDeleted', required: false, type: Boolean, description: 'Show only soft-deleted items (default: false - shows only active items)', example: false })
+  @ApiQuery({
+    name: 'includeDeleted',
+    required: false,
+    type: Boolean,
+    description: 'Show only soft-deleted items (default: false - shows only active items)',
+    example: false,
+  })
   @ApiResponse({ status: 200, description: 'Product poses retrieved successfully' })
   async findAll(@Query() filters: FilterProductPosesDto) {
     const { poses, total } = await this.service.findAll(filters);
@@ -85,7 +99,9 @@ export class ProductPosesController {
   async update(
     @Param('id') id: string,
     @Body() dto: UpdateProductPoseDto,
-    @UploadedFile(new ParseFilePipe({ validators: [new FileValidationPipe()], fileIsRequired: false }))
+    @UploadedFile(
+      new ParseFilePipe({ validators: [new FileValidationPipe()], fileIsRequired: false }),
+    )
     file?: Express.Multer.File,
   ) {
     const result = await this.service.update(id, dto, file);
@@ -93,7 +109,10 @@ export class ProductPosesController {
   }
 
   @Patch(':id/soft-delete')
-  @ApiOperation({ summary: 'Toggle soft delete status for a product pose (restores if deleted, deletes if active)' })
+  @ApiOperation({
+    summary:
+      'Toggle soft delete status for a product pose (restores if deleted, deletes if active)',
+  })
   @ApiResponse({ status: 200, description: 'Product pose status toggled successfully' })
   async softDelete(@Param('id') id: string) {
     const result = await this.service.softDelete(id);

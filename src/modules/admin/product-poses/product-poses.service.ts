@@ -29,7 +29,7 @@ export class ProductPosesService {
     const productTypes = await this.productTypeRepo.find({
       where: { id: In(dto.productTypeIds) },
     });
-    
+
     if (productTypes.length !== dto.productTypeIds.length) {
       throw new NotFoundException('One or more product types not found');
     }
@@ -43,9 +43,11 @@ export class ProductPosesService {
       .where('pose.name = :name', { name: dto.name })
       .andWhere('pt.id IN (:...productTypeIds)', { productTypeIds: dto.productTypeIds })
       .getOne();
-    
+
     if (existingPose) {
-      throw new BadRequestException('Product pose with this name already exists for one or more of the specified product types');
+      throw new BadRequestException(
+        'Product pose with this name already exists for one or more of the specified product types',
+      );
     }
 
     const productBackgrounds = dto.productBackgroundIds
@@ -82,8 +84,12 @@ export class ProductPosesService {
     // Update GCS path with actual ID if different (overwrite with correct path)
     if (saved.id !== tempId) {
       const newPath = `product-poses/${firstProductTypeId}/${saved.id}/image.${fileExtension}`;
-      const newUrl = await this.gcsStorageService.uploadPublicFile(file.buffer, newPath, file.mimetype);
-      
+      const newUrl = await this.gcsStorageService.uploadPublicFile(
+        file.buffer,
+        newPath,
+        file.mimetype,
+      );
+
       // Delete old file if path changed
       if (gcsPath !== newPath) {
         try {
@@ -92,7 +98,7 @@ export class ProductPosesService {
           console.error('Failed to delete old image:', error);
         }
       }
-      
+
       saved.imageUrl = newUrl;
       saved.imagePath = newPath;
       return this.repo.save(saved);
@@ -165,7 +171,7 @@ export class ProductPosesService {
       relations: ['productTypes', 'productTypes.category', 'productBackgrounds'],
     });
     if (!pose) throw new NotFoundException('Product pose not found');
-    
+
     // Return only imageUrl (CDN URL), no base64 fallback
     return {
       ...pose,
@@ -184,24 +190,25 @@ export class ProductPosesService {
       if (dto.productTypeIds.length === 0) {
         throw new BadRequestException('At least one product type ID is required');
       }
-      
+
       const newProductTypes = await this.productTypeRepo.find({
         where: { id: In(dto.productTypeIds) },
       });
-      
+
       if (newProductTypes.length !== dto.productTypeIds.length) {
         throw new NotFoundException('One or more product types not found');
       }
-      
+
       pose.productTypes = newProductTypes;
     }
 
     if (dto.productBackgroundIds !== undefined) {
-      pose.productBackgrounds = dto.productBackgroundIds.length > 0
-        ? await this.productBackgroundRepo.find({
-            where: { id: In(dto.productBackgroundIds) },
-          })
-        : [];
+      pose.productBackgrounds =
+        dto.productBackgroundIds.length > 0
+          ? await this.productBackgroundRepo.find({
+              where: { id: In(dto.productBackgroundIds) },
+            })
+          : [];
     }
 
     if (dto.name) {
@@ -214,9 +221,11 @@ export class ProductPosesService {
         .andWhere('pt.id IN (:...productTypeIds)', { productTypeIds })
         .andWhere('pose.id != :id', { id })
         .getOne();
-      
+
       if (duplicate) {
-        throw new BadRequestException('Product pose with this name already exists for one or more of the specified product types');
+        throw new BadRequestException(
+          'Product pose with this name already exists for one or more of the specified product types',
+        );
       }
     }
 
@@ -226,11 +235,12 @@ export class ProductPosesService {
       const fileExtension = file.originalname.split('.').pop() || 'jpg';
       // Use first product type ID for path (or existing path structure)
       const firstProductTypeId = pose.productTypes.length > 0 ? pose.productTypes[0].id : null;
-      const gcsPath = pose.imagePath && firstProductTypeId && pose.imagePath.includes(firstProductTypeId)
-        ? pose.imagePath // Reuse existing path (overwrite) if it contains the first product type ID
-        : firstProductTypeId 
-          ? `product-poses/${firstProductTypeId}/${id}/image.${fileExtension}` // Create new path
-          : `product-poses/${id}/image.${fileExtension}`; // Fallback if no product types
+      const gcsPath =
+        pose.imagePath && firstProductTypeId && pose.imagePath.includes(firstProductTypeId)
+          ? pose.imagePath // Reuse existing path (overwrite) if it contains the first product type ID
+          : firstProductTypeId
+            ? `product-poses/${firstProductTypeId}/${id}/image.${fileExtension}` // Create new path
+            : `product-poses/${id}/image.${fileExtension}`; // Fallback if no product types
 
       // Upload as public file (will overwrite if path exists)
       const imageUrl = await this.gcsStorageService.uploadPublicFile(
@@ -238,7 +248,7 @@ export class ProductPosesService {
         gcsPath,
         file.mimetype,
       );
-      
+
       pose.imageUrl = imageUrl;
       pose.imagePath = gcsPath;
     }
@@ -247,7 +257,7 @@ export class ProductPosesService {
     pose.description = dto.description ?? pose.description;
 
     const saved = await this.repo.save(pose);
-    
+
     // Return only imageUrl (CDN URL), no base64 fallback
     return {
       ...saved,

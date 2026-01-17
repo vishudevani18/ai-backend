@@ -8,4 +8,3 @@ import { GcsStorageService } from './services/gcs-storage.service';
   exports: [GcsStorageService],
 })
 export class StorageModule {}
-

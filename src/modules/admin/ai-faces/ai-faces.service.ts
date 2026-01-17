@@ -32,7 +32,9 @@ export class AiFacesService {
       where: { name: dto.name, categoryId: dto.categoryId, gender: dto.gender },
     });
     if (exists) {
-      throw new BadRequestException('AI face with this name already exists for this category and gender');
+      throw new BadRequestException(
+        'AI face with this name already exists for this category and gender',
+      );
     }
 
     // Generate temporary ID for path, will update after save
@@ -62,8 +64,12 @@ export class AiFacesService {
     // Update GCS path with actual ID if different (overwrite with correct path)
     if (saved.id !== tempId) {
       const newPath = `ai-faces/${dto.categoryId}/${dto.gender}/${saved.id}/image.${fileExtension}`;
-      const newUrl = await this.gcsStorageService.uploadPublicFile(file.buffer, newPath, file.mimetype);
-      
+      const newUrl = await this.gcsStorageService.uploadPublicFile(
+        file.buffer,
+        newPath,
+        file.mimetype,
+      );
+
       // Delete old file if path changed
       if (gcsPath !== newPath) {
         try {
@@ -72,7 +78,7 @@ export class AiFacesService {
           console.error('Failed to delete old image:', error);
         }
       }
-      
+
       saved.imageUrl = newUrl;
       saved.imagePath = newPath;
       return this.repo.save(saved);
@@ -167,7 +173,9 @@ export class AiFacesService {
         },
       });
       if (duplicate && duplicate.id !== aiFace.id) {
-        throw new BadRequestException('AI face with this name already exists for this category and gender');
+        throw new BadRequestException(
+          'AI face with this name already exists for this category and gender',
+        );
       }
     }
 
@@ -177,11 +185,10 @@ export class AiFacesService {
       const fileExtension = file.originalname.split('.').pop() || 'jpg';
       const finalGender = dto.gender ?? aiFace.gender;
       const finalCategoryId = dto.categoryId ?? aiFace.categoryId;
-      const gcsPath = aiFace.imagePath && 
-        aiFace.categoryId === finalCategoryId && 
-        aiFace.gender === finalGender
-        ? aiFace.imagePath // Reuse existing path (overwrite) if category and gender unchanged
-        : `ai-faces/${finalCategoryId}/${finalGender}/${id}/image.${fileExtension}`; // Create new path
+      const gcsPath =
+        aiFace.imagePath && aiFace.categoryId === finalCategoryId && aiFace.gender === finalGender
+          ? aiFace.imagePath // Reuse existing path (overwrite) if category and gender unchanged
+          : `ai-faces/${finalCategoryId}/${finalGender}/${id}/image.${fileExtension}`; // Create new path
 
       // Upload as public file (will overwrite if path exists)
       const imageUrl = await this.gcsStorageService.uploadPublicFile(
@@ -189,7 +196,7 @@ export class AiFacesService {
         gcsPath,
         file.mimetype,
       );
-      
+
       aiFace.imageUrl = imageUrl;
       aiFace.imagePath = gcsPath;
     }
@@ -244,4 +251,3 @@ export class AiFacesService {
     return { message: 'AI face permanently deleted' };
   }
 }
-

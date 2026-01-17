@@ -40,7 +40,7 @@ export class CategoriesService {
       const tempId = uuidv4();
       const fileExtension = file.originalname.split('.').pop() || 'jpg';
       const gcsPath = `categories/${tempId}/image.${fileExtension}`;
-      
+
       // Upload as public file
       imageUrl = await this.gcsStorageService.uploadPublicFile(file.buffer, gcsPath, file.mimetype);
       imagePath = gcsPath;
@@ -60,8 +60,12 @@ export class CategoriesService {
     // Update GCS path with actual ID if different (overwrite with correct path)
     if (file && saved.id !== imagePath?.split('/')[1]) {
       const newPath = `categories/${saved.id}/image.${file.originalname.split('.').pop() || 'jpg'}`;
-      const newUrl = await this.gcsStorageService.uploadPublicFile(file.buffer, newPath, file.mimetype);
-      
+      const newUrl = await this.gcsStorageService.uploadPublicFile(
+        file.buffer,
+        newPath,
+        file.mimetype,
+      );
+
       // Delete old file if path changed
       if (imagePath && imagePath !== newPath) {
         try {
@@ -70,7 +74,7 @@ export class CategoriesService {
           console.error('Failed to delete old image:', error);
         }
       }
-      
+
       saved.imageUrl = newUrl;
       saved.imagePath = newPath;
       return this.repo.save(saved);
@@ -157,7 +161,7 @@ export class CategoriesService {
     if (file) {
       // Use overwriting strategy: reuse same path if exists, otherwise create new
       const fileExtension = file.originalname.split('.').pop() || 'jpg';
-      const gcsPath = category.imagePath 
+      const gcsPath = category.imagePath
         ? category.imagePath // Reuse existing path (overwrite)
         : `categories/${id}/image.${fileExtension}`; // Create new path
 
@@ -167,7 +171,7 @@ export class CategoriesService {
         gcsPath,
         file.mimetype,
       );
-      
+
       category.imageUrl = imageUrl;
       category.imagePath = gcsPath;
     }

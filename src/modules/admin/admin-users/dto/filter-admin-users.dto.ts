@@ -19,4 +19,3 @@ export class FilterAdminUsersDto extends PaginationQueryDto {
   @IsEnum(UserStatus)
   status?: UserStatus;
 }
-

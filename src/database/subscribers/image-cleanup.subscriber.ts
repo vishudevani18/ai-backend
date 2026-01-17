@@ -1,9 +1,4 @@
-import {
-  EventSubscriber,
-  EntitySubscriberInterface,
-  RemoveEvent,
-  DataSource,
-} from 'typeorm';
+import { EventSubscriber, EntitySubscriberInterface, RemoveEvent, DataSource } from 'typeorm';
 import { Category } from '../entities/category.entity';
 import { ProductTheme } from '../entities/product-theme.entity';
 import { ProductBackground } from '../entities/product-background.entity';
@@ -65,4 +60,3 @@ export class ImageCleanupSubscriber implements EntitySubscriberInterface, OnModu
     return Category; // Return one entity class, but we handle all in beforeRemove
   }
 }
-
