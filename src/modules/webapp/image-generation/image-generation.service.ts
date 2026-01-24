@@ -26,7 +26,6 @@ import { CreditOperationType } from '../../../database/entities/credit-transacti
 import {
   ERROR_MESSAGES,
   DEFAULT_PROMPT_TEMPLATE,
-  STATIC_POSE_DESCRIPTION,
 } from '../../../common/constants/image-generation.constants';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -248,8 +247,8 @@ export class ImageGenerationService {
       this.gcsStorageService.downloadFile(aiFace.imagePath || aiFace.imageUrl),
     ]);
 
-    // Use pose description from database if available, otherwise use static constant
-    const poseDescription = productPose?.description?.trim() || STATIC_POSE_DESCRIPTION;
+    // Use pose description from database if available, otherwise use pose name
+    const poseDescription = productPose?.description?.trim() || productPose?.name || '';
 
     return {
       aiFace: faceBuffer.toString('base64'),
@@ -361,7 +360,7 @@ export class ImageGenerationService {
       const generationPromises = productPoseIds.map(async poseId => {
         const poseStartTime = Date.now();
         try {
-          const poseDescription = poseDescriptions[poseId] || STATIC_POSE_DESCRIPTION;
+          const poseDescription = poseDescriptions[poseId] || '';
           const finalPrompt = this.buildPromptWithPose(poseDescription);
 
           // Generate image
@@ -568,7 +567,7 @@ export class ImageGenerationService {
     const descriptions: Record<string, string> = {};
     poses.forEach((pose, index) => {
       if (pose) {
-        descriptions[poseIds[index]] = pose.description?.trim() || STATIC_POSE_DESCRIPTION;
+        descriptions[poseIds[index]] = pose.description?.trim() || pose.name || '';
       }
     });
 

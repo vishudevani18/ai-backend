@@ -3,22 +3,6 @@ export enum GenerationStatus {
   FAILED = 'failed',
 }
 
-export const STATIC_POSE_DESCRIPTION = `Standing in a relaxed fashion catalog pose.
-
-Weight shifted slightly onto one leg with a subtle contrapposto stance.
-
-Torso upright with a gentle natural curve.
-
-One arm relaxed down at the side.
-
-Other arm bent at the elbow with the hand resting lightly near the waist.
-
-Shoulders relaxed and slightly asymmetrical.
-
-Head gently tilted with a natural neutral posture.
-
-Overall pose is calm, balanced, and elegant.`;
-
 export const DEFAULT_PROMPT_TEMPLATE = `You are a professional fashion photographer and digital compositing artist.
 
 Generate one photorealistic fashion product image by strictly combining the references below, without interpretation.
@@ -97,6 +81,17 @@ DO NOT use any clothing from the pose description - only use the cloth from [3]
 The face and pose in [3] must be completely ignored - use face ONLY from [1] and pose from the text description above
 
 The background in [3] must be completely ignored - use background ONLY from [2]
+
+FOOTWEAR — REQUIRED
+CRITICAL: The model MUST wear realistic footwear.
+Footwear must be automatically selected to match:
+The garment from Reference [3]
+The pose and catalog context
+Footwear must be neutral, commercially appropriate, and realistic, with correct scale and perspective.
+STRICT:
+No barefoot (unless garment explicitly requires it)
+No accessories other than footwear
+Do not alter pose, face, background, or clothing
 
 🔁 CONSISTENCY RULE
 
