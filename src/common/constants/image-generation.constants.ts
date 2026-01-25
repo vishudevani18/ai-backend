@@ -147,6 +147,86 @@ Create variations of the pose - the same description must produce the IDENTICAL 
 
 One clean, ultra-realistic product image suitable for e-commerce catalogs.`;
 
+export const KURTI_BOTTOM_WEAR_PROMPT = `
+🧵 CONTROLLED GARMENT COMPLETION — KURTI SPECIFIC (NON-NEGOTIABLE)
+
+CRITICAL: This section applies ONLY when Reference [3] contains a TOP-ONLY kurti (single kurti, no bottom wear visible).
+
+GARMENT COMPLETENESS LOGIC:
+
+1. If Reference [3] contains a TOP-ONLY kurti:
+   - The system MUST generate a complementary bottom wear.
+   - Bottom wear must be:
+     - Simple, minimal, and commercially standard
+     - Derived ONLY from the kurti's color palette, fabric weight, and style
+     - Solid-colored (no prints, no embroidery, no patterns)
+     - Neutral in design (straight pant, ankle-length pant, churidar, or palazzo)
+   - Bottom wear must NEVER overpower the kurti.
+   - Bottom wear must NOT introduce new patterns, colors, or cultural elements.
+   - Bottom wear must appear as a natural retail pairing.
+
+2. If Reference [3] already includes bottom wear:
+   - Use ONLY the bottom wear from Reference [3].
+   - Do NOT modify, replace, or reinterpret it.
+   - Do NOT add additional bottom wear.
+
+3. If Reference [3] includes multiple components (2-piece / 3-piece):
+   - Use ONLY the components visible in Reference [3].
+   - Do NOT synthesize missing components.
+
+BOTTOM WEAR STYLE LOCK (When bottom wear is synthesized):
+- Match fabric drape to kurti weight (cotton-to-cotton, rayon-to-rayon)
+- Color must be:
+  - Same color family as kurti OR
+  - Neutral (ivory, beige, off-white, black)
+- Fit must be realistic and conservative
+- No transparency
+- No contrast stitching
+- No embellishments
+- Generated bottom wear must visually read as secondary to the kurti
+- The kurti remains the product hero
+
+CRITICAL:
+- Bottom wear synthesis is allowed ONLY for top-only kurti products.
+- Never infer or add dupattas, jackets, or accessories.
+- Never generate bottom wear if Reference [3] already shows bottom wear.
+`;
+
+/**
+ * Detects if a product type is a single kurti (top-only)
+ * @param productTypeName - The name of the product type
+ * @returns true if it's a single kurti, false otherwise
+ */
+export function isSingleKurtiProduct(productTypeName: string): boolean {
+  if (!productTypeName) return false;
+
+  const normalizedName = productTypeName.toLowerCase().trim();
+
+  // Check for single kurti patterns
+  const singleKurtiPatterns = [
+    'kurti ( top only )',
+    'kurti (top only)',
+    'kurti top only',
+    'single kurti',
+    'kurti single',
+    'kurti 1 pic',
+    'kurti single pic',
+  ];
+
+  // Check if it matches single kurti pattern
+  const isSingleKurti = singleKurtiPatterns.some(pattern => normalizedName.includes(pattern));
+
+  // Exclude if it's a set (2 pic, 3 pic, etc.)
+  const isSet =
+    normalizedName.includes('2 pic') ||
+    normalizedName.includes('3 pic') ||
+    normalizedName.includes('set') ||
+    normalizedName.includes('2-piece') ||
+    normalizedName.includes('3-piece');
+
+  return isSingleKurti && !isSet;
+}
+
 export const ERROR_MESSAGES = {
   MISSING_INDUSTRY: 'Industry not found',
   MISSING_CATEGORY: 'Category not found',

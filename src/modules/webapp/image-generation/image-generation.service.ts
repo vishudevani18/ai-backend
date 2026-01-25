@@ -26,6 +26,8 @@ import { CreditOperationType } from '../../../database/entities/credit-transacti
 import {
   ERROR_MESSAGES,
   DEFAULT_PROMPT_TEMPLATE,
+  KURTI_BOTTOM_WEAR_PROMPT,
+  isSingleKurtiProduct,
 } from '../../../common/constants/image-generation.constants';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -88,13 +90,13 @@ export class ImageGenerationService {
       }
 
       // Step 1: Validate all IDs exist and are not soft-deleted
-      await this.validateRequest(dto);
+      const productType = await this.validateRequest(dto);
 
       // Step 2: Fetch reference images from GCS and validate they exist
       const referenceImages = await this.fetchReferenceImages(dto);
 
       // Step 3: Build prompt with pose description from database (falls back to static constant if not available)
-      const finalPrompt = this.buildPromptWithPose(referenceImages.poseDescription);
+      const finalPrompt = this.buildPromptWithPose(referenceImages.poseDescription, productType);
 
       // Step 4: Prepare images for Gemini (face, background, product)
       // Note: Pose is text-based from database description for consistency
@@ -184,8 +186,9 @@ export class ImageGenerationService {
 
   /**
    * Validate all IDs exist in database and are not soft-deleted
+   * @returns The validated ProductType entity
    */
-  private async validateRequest(dto: GenerateImageDto): Promise<void> {
+  private async validateRequest(dto: GenerateImageDto): Promise<ProductType> {
     const [industry, category, productType, productPose, productTheme, productBackground, aiFace] =
       await Promise.all([
         this.industryRepo.findOne({ where: { id: dto.industryId } }),
@@ -204,6 +207,8 @@ export class ImageGenerationService {
     if (!productTheme) throw new NotFoundException(ERROR_MESSAGES.MISSING_PRODUCT_THEME);
     if (!productBackground) throw new NotFoundException(ERROR_MESSAGES.MISSING_PRODUCT_BACKGROUND);
     if (!aiFace) throw new NotFoundException(ERROR_MESSAGES.MISSING_AI_FACE);
+
+    return productType;
   }
 
   /**
@@ -259,10 +264,17 @@ export class ImageGenerationService {
   }
 
   /**
-   * Build prompt by replacing pose description placeholder with database value or static fallback
+   * Build prompt by replacing pose description placeholder and conditionally adding kurti bottom wear section
    */
-  private buildPromptWithPose(poseDescription: string): string {
-    return DEFAULT_PROMPT_TEMPLATE.replace('{{POSE_DESCRIPTION}}', poseDescription);
+  private buildPromptWithPose(poseDescription: string, productType?: ProductType): string {
+    let prompt = DEFAULT_PROMPT_TEMPLATE.replace('{{POSE_DESCRIPTION}}', poseDescription);
+
+    // Conditionally add kurti bottom wear section for single kurti products only
+    if (productType && isSingleKurtiProduct(productType.name)) {
+      prompt += '\n\n' + KURTI_BOTTOM_WEAR_PROMPT;
+    }
+
+    return prompt;
   }
 
   /**
@@ -335,7 +347,7 @@ export class ImageGenerationService {
       }
 
       // Step 1: Validate all shared IDs exist (industry, category, productType, theme, background, aiFace)
-      await this.validateBulkRequest(dto);
+      const productType = await this.validateBulkRequest(dto);
 
       // Step 2: Validate all pose IDs exist
       await this.validatePoseIds(productPoseIds);
@@ -361,7 +373,7 @@ export class ImageGenerationService {
         const poseStartTime = Date.now();
         try {
           const poseDescription = poseDescriptions[poseId] || '';
-          const finalPrompt = this.buildPromptWithPose(poseDescription);
+          const finalPrompt = this.buildPromptWithPose(poseDescription, productType);
 
           // Generate image
           const generatedImageBuffer = await this.geminiImageService.generateCompositeImage(
@@ -482,8 +494,9 @@ export class ImageGenerationService {
 
   /**
    * Validate shared IDs for bulk generation (industry, category, productType, theme, background, aiFace)
+   * @returns The validated ProductType entity
    */
-  private async validateBulkRequest(dto: GenerateBulkImageDto): Promise<void> {
+  private async validateBulkRequest(dto: GenerateBulkImageDto): Promise<ProductType> {
     const [industry, category, productType, productTheme, productBackground, aiFace] =
       await Promise.all([
         this.industryRepo.findOne({ where: { id: dto.industryId } }),
@@ -500,6 +513,8 @@ export class ImageGenerationService {
     if (!productTheme) throw new NotFoundException(ERROR_MESSAGES.MISSING_PRODUCT_THEME);
     if (!productBackground) throw new NotFoundException(ERROR_MESSAGES.MISSING_PRODUCT_BACKGROUND);
     if (!aiFace) throw new NotFoundException(ERROR_MESSAGES.MISSING_AI_FACE);
+
+    return productType;
   }
 
   /**
