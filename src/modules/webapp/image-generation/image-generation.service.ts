@@ -18,6 +18,7 @@ import {
 } from '../../../database/entities/generated-image.entity';
 import { GcsStorageService } from '../../../storage/services/gcs-storage.service';
 import { GeminiImageService } from './services/gemini-image.service';
+import { ImagenImageService } from './services/imagen-image.service';
 import { ImageCleanupService } from './services/image-cleanup.service';
 import { GenerateImageDto } from './dto/generate-image.dto';
 import { GenerateBulkImageDto } from './dto/generate-bulk-image.dto';
@@ -26,6 +27,7 @@ import { CreditOperationType } from '../../../database/entities/credit-transacti
 import {
   ERROR_MESSAGES,
   DEFAULT_PROMPT_TEMPLATE,
+  IMAGEN_DEFAULT_PROMPT_TEMPLATE,
   KURTI_BOTTOM_WEAR_PROMPT,
   isSingleKurtiProduct,
 } from '../../../common/constants/image-generation.constants';
@@ -54,6 +56,7 @@ export class ImageGenerationService {
     private readonly generatedImageRepo: Repository<GeneratedImage>,
     private readonly gcsStorageService: GcsStorageService,
     private readonly geminiImageService: GeminiImageService,
+    private readonly imagenImageService: ImagenImageService,
     private readonly imageCleanupService: ImageCleanupService,
     private readonly configService: ConfigService,
     private readonly creditsService: CreditsService,
@@ -629,5 +632,129 @@ export class ImageGenerationService {
     });
 
     return await this.generatedImageRepo.save(record);
+  }
+
+  /**
+   * Generate an image using Imagen
+   * Uses the same flow as generateImage but with Imagen model instead of Gemini
+   * Uses DEFAULT_PROMPT_TEMPLATE only (no kurti-specific additions)
+   */
+  async generateImageWithImagen(
+    dto: GenerateImageDto,
+    userId: string,
+  ): Promise<{ imageUrl: string; expiresAt: Date }> {
+    const startTime = Date.now();
+    let generatedImageRecord: GeneratedImage | null = null;
+
+    try {
+      // Step 0: Check if user has enough credits BEFORE starting generation
+      const imageGenerationCost =
+        this.configService.get<number>('app.credits.costs.imageGeneration') || 5;
+      const currentBalance = await this.creditsService.checkBalance(userId);
+
+      if (currentBalance < imageGenerationCost) {
+        throw new BusinessError(
+          ErrorCode.INSUFFICIENT_CREDITS,
+          `Insufficient credits. Required: ${imageGenerationCost}, Available: ${currentBalance}. Please purchase more credits to generate images.`,
+          HttpStatus.PAYMENT_REQUIRED,
+          {
+            userId,
+            required: imageGenerationCost,
+            available: currentBalance,
+            operation: 'image_generation',
+          },
+        );
+      }
+
+      // Step 1: Validate all IDs exist and are not soft-deleted
+      await this.validateRequest(dto);
+
+      // Step 2: Fetch reference images from GCS and validate they exist
+      const referenceImages = await this.fetchReferenceImages(dto);
+
+      // Step 3: Build prompt using IMAGEN_DEFAULT_PROMPT_TEMPLATE (optimized for Imagen 3.0 Capability)
+      const finalPrompt = IMAGEN_DEFAULT_PROMPT_TEMPLATE.replace(
+        '{{POSE_DESCRIPTION}}',
+        referenceImages.poseDescription || 'elegantly',
+      );
+
+      // Step 4: Prepare images for Imagen (face, background, product)
+      const faceImageBase64 = referenceImages.aiFace;
+      const backgroundImageBase64 = referenceImages.productBackground;
+      const productImageBase64 = dto.productImage.split(',')[1] || dto.productImage;
+
+      // Step 5: Generate composite image using Imagen 3.0 with reference images
+      const generatedImageBuffer = await this.imagenImageService.generateWithReferences(
+        faceImageBase64,
+        backgroundImageBase64,
+        productImageBase64,
+        finalPrompt,
+      );
+
+      // Step 6: Store generated image in GCS
+      const { imageUrl, imagePath } = await this.storeGeneratedImage(generatedImageBuffer);
+
+      // Step 7: Calculate expiresAt
+      const retentionHours =
+        this.configService.get<number>('app.gemini.imageGeneration.imageRetentionHours') || 6;
+      const expiresAt = new Date();
+      expiresAt.setHours(expiresAt.getHours() + retentionHours);
+
+      // Step 8: Log generation to database (success)
+      const generationTimeMs = Date.now() - startTime;
+      generatedImageRecord = await this.logGeneration({
+        ...dto,
+        imageUrl,
+        imagePath,
+        generationStatus: GenerationStatus.SUCCESS,
+        generationTimeMs,
+        expiresAt,
+        generationType: GenerationType.SINGLE,
+        userId,
+      });
+
+      // Step 9: Deduct credits after successful generation
+      await this.creditsService.deductCreditsOrFail(
+        userId,
+        imageGenerationCost,
+        CreditOperationType.IMAGE_GENERATION,
+        `Single image generation (Imagen 3.0): ${generatedImageRecord.id}`,
+        generatedImageRecord.id,
+      );
+
+      // Step 10: Schedule GCS deletion (database entry remains)
+      await this.imageCleanupService.scheduleDeletion(imagePath, generatedImageRecord.id);
+
+      this.logger.log(`Image generation (Imagen) completed successfully in ${generationTimeMs}ms`);
+
+      return { imageUrl, expiresAt };
+    } catch (error) {
+      const generationTimeMs = Date.now() - startTime;
+      const errorMessage = error instanceof Error ? error.message : String(error);
+
+      // Log failed generation to database
+      await this.logGeneration({
+        ...dto,
+        imageUrl: null,
+        imagePath: null,
+        generationStatus: GenerationStatus.FAILED,
+        errorMessage,
+        generationTimeMs,
+        expiresAt: null,
+        generationType: GenerationType.SINGLE,
+        userId,
+      });
+
+      this.logger.error(
+        `Image generation (Imagen) failed after ${generationTimeMs}ms: ${errorMessage}`,
+        error,
+      );
+
+      // Re-throw the error
+      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new BadRequestException(`${ERROR_MESSAGES.GEMINI_API_ERROR}: ${errorMessage}`);
+    }
   }
 }

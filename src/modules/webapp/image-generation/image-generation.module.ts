@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ImageGenerationController } from './image-generation.controller';
 import { ImageGenerationService } from './image-generation.service';
 import { GeminiImageService } from './services/gemini-image.service';
+import { ImagenImageService } from './services/imagen-image.service';
 import { ImageCleanupService } from './services/image-cleanup.service';
 import { Industry } from '../../../database/entities/industry.entity';
 import { Category } from '../../../database/entities/category.entity';
@@ -31,7 +32,7 @@ import { CreditsModule } from '../../credits/credits.module';
     CreditsModule,
   ],
   controllers: [ImageGenerationController],
-  providers: [ImageGenerationService, GeminiImageService, ImageCleanupService],
+  providers: [ImageGenerationService, GeminiImageService, ImagenImageService, ImageCleanupService],
   exports: [ImageGenerationService, ImageCleanupService],
 })
 export class ImageGenerationModule {}

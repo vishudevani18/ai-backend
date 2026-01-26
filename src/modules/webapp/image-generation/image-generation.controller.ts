@@ -114,4 +114,52 @@ export class ImageGenerationController {
 
     return ResponseUtil.success(response, 'Bulk images generated successfully');
   }
+
+  @Post('generate-image-imagen')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Generate image using Imagen AI (User only)',
+    description:
+      'Generates a composite image using Google Imagen 3.0 Capability API. Accepts product catalog IDs (industry, category, product type, pose, theme, background, AI face) and a user-uploaded product image. Uses the same DTO structure and flow as generate-image endpoint, but uses Imagen model instead of Gemini. Uses DEFAULT_PROMPT_TEMPLATE only (no kurti-specific additions). The generated image is stored in GCS with public CDN access and automatically deleted after 6 hours. All generations are logged in the database for analytics. Requires USER role authentication.',
+  })
+  @ApiBody({ type: GenerateImageDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Image generated successfully using Imagen',
+    type: GenerateImageResponseDto,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid request or missing reference images',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized - Invalid or missing token',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - USER role required',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'One or more reference IDs not found',
+  })
+  async generateImageImagen(@CurrentUser() user: JwtUser, @Body() dto: GenerateImageDto) {
+    if (!user || !user.id) {
+      throw new Error('User not found in request');
+    }
+    const { imageUrl, expiresAt } = await this.imageGenerationService.generateImageWithImagen(
+      dto,
+      user.id,
+    );
+
+    const response: GenerateImageResponseDto = {
+      success: true,
+      imageUrl,
+      message: 'Image generated successfully using Imagen',
+      expiresAt: expiresAt.toISOString(),
+    };
+
+    return ResponseUtil.success(response, 'Image generated successfully');
+  }
 }

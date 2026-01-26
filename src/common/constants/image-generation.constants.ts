@@ -147,6 +147,38 @@ Create variations of the pose - the same description must produce the IDENTICAL 
 
 One clean, ultra-realistic product image suitable for e-commerce catalogs.`;
 
+/**
+ * Default prompt template for Imagen 3.0 Capability model
+ * Optimized for Imagen's referential image generation API
+ * Uses [1], [2], [3] format (not "Reference [1]") which Imagen API recognizes as direct links
+ * Reference [1] = Face/Person (REFERENCE_TYPE_SUBJECT, SUBJECT_TYPE_PERSON)
+ * Reference [2] = Background/Setting (REFERENCE_TYPE_CONTROL, CONTROL_TYPE_CANNY)
+ * Reference [3] = Product/Clothing (REFERENCE_TYPE_SUBJECT, SUBJECT_TYPE_PRODUCT)
+ *
+ * Note: enhancePrompt should be set to false in API parameters to prevent prompt rewriting
+ */
+export const IMAGEN_DEFAULT_PROMPT_TEMPLATE = `Professional fashion photography of a person [1] wearing a product [3] in a specific setting [2].
+
+STRICT CONSTRAINTS:
+
+FACE: Extract the face from [1] exactly. The final model must have an identical identity, skin tone, and bone structure to the person in [1]. Apply the face exactly as-is - do not recreate or regenerate. The face from [1] must be applied identically to the final image with 100% consistency. No beautification, no stylization, no modification. The model must be a real person with natural human skin and features, NOT a mannequin or dummy.
+
+POSE: The model [1] must perform this exact pose: {{POSE_DESCRIPTION}}. Ensure 100% anatomical accuracy to this description. Every body part position must be identical: head angle, shoulders, arms, hands, torso, legs, stance, weight distribution. The pose must be 100% consistent across ALL image generations. Do NOT deviate from the pose description - treat it as a fixed, unchangeable template.
+
+BACKGROUND: Use the environment from [2] as the fixed background. Maintain identical lighting, shadows, and composition from [2]. The background must be IDENTICAL: same colors, lighting, shadows, composition, and all visual elements. Replace the entire background with [2] - do not modify, alter, or change anything. DO NOT use background from any other reference - ONLY use background from [2].
+
+PRODUCT: Display the clothing from [3] on the model [1]. Ignore any person or pose in [3]; capture only the fabric, design, color, texture, style, and details. The model in the generated image must wear/display ONLY the cloth/garment from [3]. Preserve exact color, texture, fit, drape, and details from [3]. The cloth must look naturally worn and properly fitted on the model. DO NOT copy the face, pose, or body from [3] - use ONLY the clothing/garment. The face and pose in [3] must be completely ignored - use face ONLY from [1] and pose from the text description above. The background in [3] must be completely ignored - use background ONLY from [2].
+
+FOOTWEAR: The model MUST wear realistic footwear. Footwear must be automatically selected to match the garment from [3] and the pose. Footwear must be neutral, commercially appropriate, and realistic, with correct scale and perspective. No barefoot (unless garment explicitly requires it). No accessories other than footwear.
+
+CONSISTENCY: Using the same references [1] and [2] AND the same pose description must ALWAYS produce identical face, pose, and background. Face consistency is the PRIMARY goal - the face from [1] must be 100% identical across all generations. Pose consistency is CRITICAL - the pose from the description must be 100% identical across all generations. Only the product/cloth may change when [3] changes.
+
+STYLE & QUALITY: Photorealistic studio catalog shot, 4k resolution, sharp focus on fabric textures, natural skin, commercial lighting. Magazine-quality realism. Product is the visual hero.
+
+DO NOT: Add text, logos, watermarks, props, or accessories. Alter face, pose, background, or product. Apply beauty retouching or artistic effects. Create a mannequin, dummy, or non-human model. Recreate or regenerate the face - reuse the exact same person from [1]. Copy the face, pose, or model from [3] - [3] is ONLY for the clothing/garment. Use face or pose from [3] - face comes ONLY from [1] and pose from the text description. Use background from [3] - background comes ONLY from [2]. Interpret, modify, or deviate from the pose description - use it EXACTLY as written.
+
+OUTPUT: One clean, ultra-realistic product image suitable for e-commerce catalogs.`;
+
 export const KURTI_BOTTOM_WEAR_PROMPT = `
 🧵 CONTROLLED GARMENT COMPLETION — KURTI SPECIFIC (NON-NEGOTIABLE)
 
