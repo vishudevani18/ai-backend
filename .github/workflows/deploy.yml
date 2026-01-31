@@ -17,7 +17,7 @@ env:
   GCS_BUCKET: ${{ secrets.GCS_BUCKET }}
 
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
     permissions:
       contents: read
