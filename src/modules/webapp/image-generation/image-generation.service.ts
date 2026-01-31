@@ -21,6 +21,8 @@ import { GeminiImageService } from './services/gemini-image.service';
 import { ImageCleanupService } from './services/image-cleanup.service';
 import { GenerateImageDto } from './dto/generate-image.dto';
 import { GenerateBulkImageDto } from './dto/generate-bulk-image.dto';
+import { GetMyImagesDto } from './dto/get-my-images.dto';
+import { MyImageItemDto } from './dto/my-image-item.dto';
 import { CreditsService } from '../../credits/credits.service';
 import { CreditOperationType } from '../../../database/entities/credit-transaction.entity';
 import {
@@ -587,6 +589,113 @@ export class ImageGenerationService {
     });
 
     return descriptions;
+  }
+
+  /**
+   * Get user's generated images with full metadata
+   * Returns paginated list of images with all generation details (names only)
+   * Only returns successful, non-expired images with valid imageUrl
+   */
+  async getMyGeneratedImages(
+    userId: string,
+    filters: GetMyImagesDto,
+  ): Promise<{ images: MyImageItemDto[]; total: number }> {
+    try {
+      const {
+        page = 1,
+        limit = 20,
+        generationType,
+        sortBy = 'createdAt',
+        sortOrder = 'DESC',
+      } = filters;
+
+      // Build query with joins to get names from related entities
+      // Only show successful generations that are not expired
+      const now = new Date();
+      const queryBuilder = this.generatedImageRepo
+        .createQueryBuilder('generatedImage')
+        .leftJoinAndSelect('generatedImage.industry', 'industry')
+        .leftJoinAndSelect('generatedImage.category', 'category')
+        .leftJoinAndSelect('generatedImage.productType', 'productType')
+        .leftJoinAndSelect('generatedImage.productPose', 'productPose')
+        .leftJoinAndSelect('generatedImage.productTheme', 'productTheme')
+        .leftJoinAndSelect('generatedImage.productBackground', 'productBackground')
+        .leftJoinAndSelect('generatedImage.aiFace', 'aiFace')
+        .where('generatedImage.userId = :userId', { userId })
+        .andWhere('generatedImage.generationStatus = :status', {
+          status: GenerationStatus.SUCCESS,
+        })
+        .andWhere('generatedImage.imageUrl IS NOT NULL') // Exclude deleted images
+        .andWhere(
+          '(generatedImage.expiresAt IS NULL OR generatedImage.expiresAt > :now)',
+          { now },
+        ) // Only non-expired images
+        .select([
+          'generatedImage.id',
+          'generatedImage.imageUrl',
+          'generatedImage.expiresAt',
+          'generatedImage.generationStatus',
+          'generatedImage.generationType',
+          'generatedImage.generationTimeMs',
+          'generatedImage.createdAt',
+          'generatedImage.errorMessage',
+          'industry.name',
+          'category.name',
+          'productType.name',
+          'productPose.name',
+          'productTheme.name',
+          'productBackground.name',
+          'aiFace.name',
+        ]);
+
+      // Apply optional filters
+      if (generationType) {
+        queryBuilder.andWhere('generatedImage.generationType = :generationType', {
+          generationType,
+        });
+      }
+
+      // Apply sorting - validate sort field to prevent SQL injection
+      const validSortFields = ['createdAt', 'updatedAt', 'generationTimeMs'];
+      const sortField = validSortFields.includes(sortBy) ? sortBy : 'createdAt';
+      const validSortOrders = ['ASC', 'DESC'];
+      const finalSortOrder = validSortOrders.includes(sortOrder) ? sortOrder : 'DESC';
+      queryBuilder.orderBy(`generatedImage.${sortField}`, finalSortOrder);
+
+      // Apply pagination
+      queryBuilder.skip((page - 1) * limit).take(limit);
+
+      const [generatedImages, total] = await queryBuilder.getManyAndCount();
+
+      // Transform to DTO format
+      // Note: errorMessage is always null for success images, but kept for API consistency
+      // imageUrl is guaranteed to be non-null due to filter above
+      const images: MyImageItemDto[] = generatedImages.map(img => ({
+        id: img.id,
+        imageUrl: img.imageUrl as string, // Non-null assertion safe due to filter
+        expiresAt: img.expiresAt ? img.expiresAt.toISOString() : null,
+        generationStatus: img.generationStatus,
+        generationType: img.generationType,
+        generationTimeMs: img.generationTimeMs || null,
+        createdAt: img.createdAt.toISOString(),
+        errorMessage: null, // Always null for success images
+        industryName: img.industry?.name || '',
+        categoryName: img.category?.name || '',
+        productTypeName: img.productType?.name || '',
+        productPoseName: img.productPose?.name || '',
+        productThemeName: img.productTheme?.name || '',
+        productBackgroundName: img.productBackground?.name || '',
+        aiFaceName: img.aiFace?.name || '',
+      }));
+
+      return { images, total };
+    } catch (error) {
+      this.logger.error(
+        `Failed to retrieve user images for userId: ${userId}`,
+        error.stack,
+      );
+      throw new BadRequestException('Failed to retrieve images. Please try again later.');
+    }
   }
 
   /**
